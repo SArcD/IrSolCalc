@@ -306,7 +306,7 @@ def generate_radiation_data(latitude, fixed_hour, radiation_percentage):
 
 # Configuración de Streamlit
 st.title("Variación de Radiación Solar Incidente")
-st.sidebar.header("Parámetros de Entrada")
+#st.sidebar.header("Parámetros de Entrada")
 
 # Entrada del usuario
 #latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43)
@@ -354,4 +354,3 @@ fig.update_layout(
 )
 st.plotly_chart(fig)
 
-st.plotly_chart(fig)
