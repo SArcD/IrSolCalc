@@ -148,8 +148,8 @@ st.title("Variación de Radiación Solar Incidente")
 st.sidebar.header("Parámetros de Entrada")
 
 # Entrada del usuario
-#latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43)
-fixed_hour = st.sidebar.slider("Hora Fija (24h)", 0.0, 24.0, 12.0)
+#latitude = st.sidebar.slider("Latitude (°)", -90.0, 90.0, 19.43)
+#fixed_hour = st.sidebar.slider("Hora Fija (24h)", 0.0, 24.0, 12.0)
 
 # Generar datos
 df = generate_radiation_data(latitude, fixed_hour)
