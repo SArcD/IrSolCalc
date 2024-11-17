@@ -1,4 +1,24 @@
-import streamlit as st
-import numpy as np
-import pandas as pd
-import plotly.express as px
+streamlit
+numpy
+pandas
+plotly.express
+seaborn
+pandas
+numpy
+matplotlib
+matplotlib_venn
+altair
+altair_catplot
+xlsxwriter
+openpyxl
+scikit-learn
+graphviz
+pydot
+pydotplus
+mlxtend
+bokeh
+fpdf
+pingouin
+skope-rules
+plotly
+pillow
