@@ -290,11 +290,10 @@ def calculate_uv_radiation(total_radiation):
     uv_fraction = 0.05  # 5% de la radiación total
     return total_radiation * uv_fraction
 
-def generate_uv_radiation_data(latitude, day_of_year):
-    """Genera los datos de radiación UV para cada hora del día."""
+def generate_radiation_data(latitude, day_of_year, radiation_type):
+    """Genera los datos de radiación para cada hora del día según el tipo de radiación."""
     hours_of_day = np.arange(0, 24, 0.5)  # Horas del día en intervalos de 0.5 horas
     radiations = []
-    uv_radiations = []
     altitudes = []
 
     declination = calculate_declination(day_of_year)
@@ -304,46 +303,51 @@ def generate_uv_radiation_data(latitude, day_of_year):
         hour_angle = calculate_hour_angle(hour, eot)
         altitude = calculate_solar_position(latitude, declination, hour_angle)
         total_radiation = calculate_radiation(altitude)
-        uv_radiation = calculate_uv_radiation(total_radiation)
+        
+        if radiation_type == "Radiación Total":
+            radiation = total_radiation
+        elif radiation_type == "Radiación UV":
+            radiation = calculate_uv_radiation(total_radiation)
+        else:
+            radiation = 0  # Valor por defecto
 
         altitudes.append(altitude)
-        radiations.append(total_radiation)
-        uv_radiations.append(uv_radiation)
+        radiations.append(radiation)
 
     return pd.DataFrame({
         "Hora del Día": hours_of_day,
         "Altitud Solar (°)": altitudes,
-        "Radiación Total (W/m²)": radiations,
-        "Radiación UV (W/m²)": uv_radiations
+        "Radiación (W/m²)": radiations
     })
 
 # Configuración de Streamlit
-st.title("Variación de Radiación UV a lo Largo del Día")
+st.title("Variación de Radiación Solar a lo Largo del Día")
 st.sidebar.header("Parámetros de Entrada")
 
 # Entrada del usuario
 #latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43)
 day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
+radiation_type = st.sidebar.selectbox("Selecciona el Tipo de Radiación", ["Radiación Total", "Radiación UV"])
 
 # Generar datos
-df = generate_uv_radiation_data(latitude, day_of_year)
+df = generate_radiation_data(latitude, day_of_year, radiation_type)
 
 # Mostrar los datos generados
-st.write(f"**Datos de Radiación Solar** para Latitud {latitude}° y Día del Año {day_of_year}")
+st.write(f"**Datos de Radiación Solar ({radiation_type})** para Latitud {latitude}° y Día del Año {day_of_year}")
 st.dataframe(df)
 
 # Gráfica interactiva
-st.write(f"**Gráfica de Variación de Radiación UV**")
+st.write(f"**Gráfica de Variación de {radiation_type}**")
 fig = px.line(
     df,
     x="Hora del Día",
-    y="Radiación UV (W/m²)",
-    title=f"Variación de Radiación UV para Latitud {latitude}° - Día del Año {day_of_year}",
-    labels={"Hora del Día": "Hora del Día", "Radiación UV (W/m²)": "Radiación UV (W/m²)"},
+    y="Radiación (W/m²)",
+    title=f"Variación de {radiation_type} para Latitud {latitude}° - Día del Año {day_of_year}",
+    labels={"Hora del Día": "Hora del Día", "Radiación (W/m²)": f"{radiation_type} (W/m²)"},
 )
 fig.update_layout(
     xaxis_title="Hora del Día",
-    yaxis_title="Radiación UV (W/m²)",
+    yaxis_title=f"{radiation_type} (W/m²)",
     height=600,
     width=900
 )
