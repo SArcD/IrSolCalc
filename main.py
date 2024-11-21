@@ -84,6 +84,96 @@ fig.update_layout(
 )
 st.plotly_chart(fig)
 
+import math
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+
+# Funciones necesarias (ya definidas previamente)
+def calculate_declination(day_of_year):
+    """Calcula la declinación solar en función del día del año."""
+    return 23.45 * math.sin(math.radians((360 / 365) * (day_of_year - 81)))
+
+def calculate_equation_of_time(day_of_year):
+    """Calcula la ecuación del tiempo en minutos."""
+    B = math.radians((360 / 365) * (day_of_year - 81))
+    return 9.87 * math.sin(2 * B) - 7.53 * math.cos(B) - 1.5 * math.sin(B)
+
+def calculate_hour_angle(hour, equation_of_time):
+    """Corrige el ángulo horario por la ecuación del tiempo."""
+    solar_time = hour + (equation_of_time / 60)
+    return 15 * (solar_time - 12)
+
+def calculate_solar_position(latitude, declination, hour_angle):
+    """Calcula la elevación y azimut solar en grados."""
+    sin_altitude = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
+                    math.cos(math.radians(latitude)) * math.cos(math.radians(declination)) * math.cos(math.radians(hour_angle)))
+    elevation = math.degrees(math.asin(sin_altitude)) if sin_altitude > 0 else 0
+
+    cos_azimuth = (math.sin(math.radians(declination)) - 
+                   math.sin(math.radians(latitude)) * math.sin(math.radians(elevation))) / (
+                   math.cos(math.radians(latitude)) * math.cos(math.radians(elevation)))
+    azimuth = math.degrees(math.acos(cos_azimuth)) if elevation > 0 else 0
+
+    if hour_angle > 0:
+        azimuth = 360 - azimuth
+
+    return elevation, azimuth
+
+def generate_daily_solar_position(latitude, day_of_year):
+    """Genera los datos de posición solar para todas las horas del día."""
+    hours = np.arange(0, 24, 0.5)  # Horas del día en pasos de 0.5
+    elevations = []
+    azimuths = []
+    hours_list = []
+
+    declination = calculate_declination(day_of_year)
+    eot = calculate_equation_of_time(day_of_year)
+
+    for hour in hours:
+        hour_angle = calculate_hour_angle(hour, eot)
+        elevation, azimuth = calculate_solar_position(latitude, declination, hour_angle)
+
+        if elevation > 0:  # Ignorar valores negativos (noche)
+            elevations.append(elevation)
+            azimuths.append(azimuth)
+            hours_list.append(hour)
+
+    return pd.DataFrame({
+        "Hora del Día": hours_list,
+        "Elevación Solar (°)": elevations,
+        "Azimut Solar (°)": azimuths
+    })
+
+# Nueva sección: Posición Solar a lo Largo del Día
+st.subheader("Gráfica de Posición Solar a lo Largo del Día")
+day_of_year_position = st.slider("Día del Año (Posición Solar)", 1, 365, 172)
+latitude_position = st.slider("Latitud (°) para Posición Solar", -90.0, 90.0, 19.43, step=0.1)
+
+df_position = generate_daily_solar_position(latitude_position, day_of_year_position)
+
+# Mostrar la gráfica interactiva
+st.write(f"**Posición Solar** para Latitud {latitude_position}° y Día del Año {day_of_year_position}")
+fig_position = px.line(
+    df_position,
+    x="Hora del Día",
+    y=["Elevación Solar (°)", "Azimut Solar (°)"],
+    title="Posición Solar a lo Largo del Día",
+    labels={"value": "Ángulo (°)", "Hora del Día": "Hora Local"},
+    markers=True
+)
+fig_position.update_layout(
+    xaxis_title="Hora del Día",
+    yaxis_title="Ángulo Solar (°)",
+    legend_title="Tipo de Ángulo",
+    height=600,
+    width=900
+)
+st.plotly_chart(fig_position)
+
+
+
 # Segunda sección: Cálculo de radiación solar
 st.subheader("Cálculo de Radiación Solar")
 day_of_year = st.slider("Día del Año", 1, 365, 172)
