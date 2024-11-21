@@ -404,7 +404,7 @@ def generate_daily_solar_position(latitude, day_of_year):
     })
 
 # Configuración de Streamlit
-st.title("Vista del Observador: Movimiento del Sol")
+st.title("Vista del Observador: Movimiento del Sol con Flecha Dinámica")
 
 # Inputs del usuario
 latitude = st.slider("Latitud", -90.0, 90.0, 19.43, step=0.1)
@@ -413,7 +413,18 @@ day_of_year = st.slider("Día", 1, 365, 172)
 # Generar datos de posición solar
 df_position = generate_daily_solar_position(latitude, day_of_year)
 
-# Transformar coordenadas esféricas a cartesianas para la media esfera
+# Deslizador para seleccionar la hora
+selected_hour = st.slider("Selecciona la hora del día:", min_value=0.0, max_value=24.0, step=0.5, value=12.0)
+
+# Encontrar los datos de la posición solar en la hora seleccionada
+selected_row = df_position[df_position["Hora del Día"] == selected_hour]
+if not selected_row.empty:
+    elev = selected_row["Elevación Solar (°)"].values[0]
+    azim = selected_row["Azimut Solar (°)"].values[0]
+else:
+    elev = azim = 0
+
+# Transformar coordenadas esféricas a cartesianas para la trayectoria solar
 solar_positions = [
     (
         math.sin(math.radians(90 - elev)) * math.cos(math.radians(azim)),
@@ -424,6 +435,11 @@ solar_positions = [
 ]
 
 solar_x, solar_y, solar_z = zip(*solar_positions)
+
+# Coordenadas de la flecha para la hora seleccionada
+arrow_x = math.sin(math.radians(90 - elev)) * math.cos(math.radians(azim))
+arrow_y = math.sin(math.radians(90 - elev)) * math.sin(math.radians(azim))
+arrow_z = math.cos(math.radians(90 - elev))
 
 # Crear la media esfera
 theta = np.linspace(0, 2 * np.pi, 100)
@@ -486,12 +502,21 @@ fig.add_trace(go.Scatter3d(
     mode='markers+lines',
     marker=dict(size=6, color="orange"),
     hovertemplate=(
-        "Hora: %{customdata[0]} h<br>" +
-        "Elevación: %{customdata[1]:.2f}°<br>" +
-        "Azimut: %{customdata[2]:.2f}°<br>"
+        "Azimut: %{customdata[0]:.2f}°<br>" +
+        "Elevación: %{customdata[1]:.2f}°"
     ),
-    customdata=np.stack((df_position["Hora del Día"], df_position["Elevación Solar (°)"], df_position["Azimut Solar (°)"]), axis=-1),
+    customdata=np.stack((df_position["Azimut Solar (°)"], df_position["Elevación Solar (°)"]), axis=-1),
     name="Posición Solar"
+))
+
+# Agregar flecha para la hora seleccionada
+fig.add_trace(go.Scatter3d(
+    x=[0, arrow_x],
+    y=[0, arrow_y],
+    z=[0, arrow_z],
+    mode="lines",
+    line=dict(color="blue", width=5),
+    name="Flecha hacia el Sol"
 ))
 
 fig.update_layout(
