@@ -130,6 +130,12 @@ fig.add_trace(go.Surface(
 ))
 
 
+# Coordenadas de la flecha para la hora seleccionada
+arrow_x = math.sin(math.radians(90 - elev)) * math.cos(math.radians(azim))
+arrow_y = math.sin(math.radians(90 - elev)) * math.sin(math.radians(azim))
+arrow_z = math.cos(math.radians(90 - elev))
+
+
 # Agregar flecha para la hora seleccionada
 fig.add_trace(go.Scatter3d(
     x=[0, arrow_x],
