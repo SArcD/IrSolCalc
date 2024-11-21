@@ -484,13 +484,13 @@ fig.add_trace(go.Scatter3d(
     y=solar_y,
     z=solar_z,
     mode='markers+lines',
-    marker=dict(size=6, color=df_position["Hora del Día"], colorscale='Viridis', colorbar=dict(title="Hora del Día")),
-    line=dict(color='orange'),
-    hovertext=[
-        f"Hora: {hour}h<br>Elevación: {elev:.2f}°<br>Azimut: {azim:.2f}°"
-        for hour, elev, azim in zip(df_position["Hora del Día"], df_position["Elevación Solar (°)"], df_position["Azimut Solar (°)"])
-    ],
-    hoverinfo="text",
+    marker=dict(size=6, color="orange"),
+    hovertemplate=(
+        "Hora: %{customdata[0]} h<br>" +
+        "Elevación: %{customdata[1]:.2f}°<br>" +
+        "Azimut: %{customdata[2]:.2f}°<br>"
+    ),
+    customdata=np.stack((df_position["Hora del Día"], df_position["Elevación Solar (°)"], df_position["Azimut Solar (°)"]), axis=-1),
     name="Posición Solar"
 ))
 
@@ -506,7 +506,6 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig)
-
 
 
 # Segunda sección: Cálculo de radiación solar
