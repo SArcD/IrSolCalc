@@ -24,71 +24,93 @@ def calculate_hour_angle(hour, equation_of_time):
     return 15 * (solar_time - 12)
 
 def calculate_solar_position(latitude, declination, hour_angle):
-    """Calcula la elevación y azimut solar en grados."""
+    """Calcula la elevación solar (altitud) y azimut en grados."""
     sin_altitude = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
                     math.cos(math.radians(latitude)) * math.cos(math.radians(declination)) * math.cos(math.radians(hour_angle)))
-    elevation = math.degrees(math.asin(sin_altitude)) if sin_altitude > 0 else 0
+    if sin_altitude <= 0:  # Si el Sol está por debajo del horizonte
+        return None, None
 
-    cos_azimuth = (math.sin(math.radians(declination)) - 
+    elevation = math.degrees(math.asin(sin_altitude))
+
+    cos_azimuth = (math.sin(math.radians(declination)) -
                    math.sin(math.radians(latitude)) * math.sin(math.radians(elevation))) / (
                    math.cos(math.radians(latitude)) * math.cos(math.radians(elevation)))
-    azimuth = math.degrees(math.acos(cos_azimuth)) if elevation > 0 else 0
 
+    azimuth = math.degrees(math.acos(cos_azimuth)) if cos_azimuth <= 1 else 0
     if hour_angle > 0:
         azimuth = 360 - azimuth
 
     return elevation, azimuth
 
-def generate_solar_path(latitude, fixed_hour):
-    """Genera los datos para azimut vs elevación solar."""
-    days_of_year = np.arange(1, 366)
-    elevations = []
-    azimuths = []
-    days = []
+def generate_solar_path(latitude, day_of_year):
+    """Genera los datos de posición solar para todas las horas del día."""
+    hours = np.arange(0, 24, 0.5)  # Horas del día en pasos de 0.5
+    elevations, azimuths, hours_list = [], [], []
 
-    for day in days_of_year:
-        declination = calculate_declination(day)
-        eot = calculate_equation_of_time(day)
-        hour_angle = calculate_hour_angle(fixed_hour, eot)
+    declination = calculate_declination(day_of_year)
+    eot = calculate_equation_of_time(day_of_year)
+
+    for hour in hours:
+        hour_angle = calculate_hour_angle(hour, eot)
         elevation, azimuth = calculate_solar_position(latitude, declination, hour_angle)
 
-        if elevation > 0:  # Ignorar valores negativos de elevación
+        if elevation is not None and azimuth is not None:
             elevations.append(elevation)
             azimuths.append(azimuth)
-            days.append(day)
+            hours_list.append(hour)
 
-    return pd.DataFrame({"Día del Año": days, "Azimut (°)": azimuths, "Elevación Solar (°)": elevations})
+    return pd.DataFrame({
+        "Hora del Día": hours_list,
+        "Elevación Solar (°)": elevations,
+        "Azimut Solar (°)": azimuths
+    })
 
 # Configuración de Streamlit
-st.title("Calculadora de Radiación Solar y Posición del Sol en Coordenadas Esféricas")
+st.title("Vista del Observador: Posición Solar en Coordenadas Esféricas")
 
-# Inputs
+# Inputs del usuario
 latitude = st.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
-fixed_hour = st.slider("Hora Fija (24h)", 0.0, 24.0, 12.0)
+day_of_year = st.slider("Día del Año", 1, 365, 172)
 
-# Generar datos de trayectoria solar
-df = generate_solar_path(latitude, fixed_hour)
+# Generar datos de posición solar
+df_position = generate_solar_path(latitude, day_of_year)
 
-# Convertir a coordenadas esféricas (radio unitario)
+# Deslizador para seleccionar la hora
+selected_hour = st.slider("Selecciona la hora del día:", min_value=0.0, max_value=24.0, step=0.5, value=12.0)
+
+# Encontrar los datos de la posición solar en la hora seleccionada
+selected_row = df_position[df_position["Hora del Día"] == selected_hour]
+if not selected_row.empty:
+    elev = selected_row["Elevación Solar (°)"].values[0]
+    azim = selected_row["Azimut Solar (°)"].values[0]
+else:
+    elev = azim = 0
+
+# Transformar coordenadas esféricas a cartesianas para la trayectoria solar
 solar_positions = [
     (
         math.sin(math.radians(90 - elev)) * math.cos(math.radians(azim)),
         math.sin(math.radians(90 - elev)) * math.sin(math.radians(azim)),
         math.cos(math.radians(90 - elev))
     )
-    for elev, azim in zip(df["Elevación Solar (°)"], df["Azimut (°)"])
+    for elev, azim in zip(df_position["Elevación Solar (°)"], df_position["Azimut Solar (°)"])
 ]
 
 solar_x, solar_y, solar_z = zip(*solar_positions)
 
-# Crear la esfera como referencia
+# Coordenadas de la flecha para la hora seleccionada
+arrow_x = math.sin(math.radians(90 - elev)) * math.cos(math.radians(azim))
+arrow_y = math.sin(math.radians(90 - elev)) * math.sin(math.radians(azim))
+arrow_z = math.cos(math.radians(90 - elev))
+
+# Crear la media esfera
 theta = np.linspace(0, 2 * np.pi, 100)
 phi = np.linspace(0, np.pi / 2, 100)  # Media esfera
 x = np.outer(np.sin(phi), np.cos(theta))
 y = np.outer(np.sin(phi), np.sin(theta))
 z = np.outer(np.cos(phi), np.ones_like(theta))
 
-# Crear gráfica 3D interactiva
+# Gráfica 3D interactiva
 fig = go.Figure()
 
 # Agregar la media esfera
@@ -98,22 +120,6 @@ fig.add_trace(go.Surface(
     opacity=0.3,
     name="Media Esfera Celeste",
     showscale=False
-))
-
-# Agregar la trayectoria solar
-fig.add_trace(go.Scatter3d(
-    x=solar_x,
-    y=solar_y,
-    z=solar_z,
-    mode='markers+lines',
-    marker=dict(size=6, color=df["Día del Año"], colorscale="Viridis", colorbar=dict(title="Día del Año")),
-    hovertemplate=(
-        "Día del Año: %{customdata[0]}<br>" +
-        "Azimut: %{customdata[1]:.2f}°<br>" +
-        "Elevación: %{customdata[2]:.2f}°"
-    ),
-    customdata=np.stack((df["Día del Año"], df["Azimut (°)"], df["Elevación Solar (°)"]), axis=-1),
-    name="Posición Solar"
 ))
 
 # Agregar plano del horizonte
@@ -130,6 +136,48 @@ fig.add_trace(go.Surface(
     showscale=False
 ))
 
+# Agregar direcciones cardinales
+directions = {
+    "Norte": (0, 0.5, 0),
+    "Este": (0.5, 0, 0),
+    "Sur": (0, -0.5, 0),
+    "Oeste": (-0.5, 0, 0)
+}
+
+for name, coord in directions.items():
+    fig.add_trace(go.Scatter3d(
+        x=[0, coord[0]],
+        y=[0, coord[1]],
+        z=[0, coord[2]],
+        mode="lines+text",
+        text=[None, name],
+        textposition="top center",
+        line=dict(color="red", width=4),
+        name=name
+    ))
+
+# Agregar la trayectoria solar
+fig.add_trace(go.Scatter3d(
+    x=solar_x,
+    y=solar_y,
+    z=solar_z,
+    mode='markers+lines',
+    marker=dict(size=6, color="orange"),
+    name="Posición Solar"
+))
+
+# Agregar flecha para la hora seleccionada
+fig.add_trace(go.Scatter3d(
+    x=[0, arrow_x],
+    y=[0, arrow_y],
+    z=[0, arrow_z],
+    mode="lines+text",
+    line=dict(color="blue", width=5),
+    text=f"Hora: {selected_hour}h<br>Azimut: {azim:.2f}°<br>Elevación: {elev:.2f}°",
+    textposition="top center",
+    name="Posición Solar Actual"
+))
+
 # Configurar vista
 fig.update_layout(
     scene=dict(
@@ -137,13 +185,12 @@ fig.update_layout(
         yaxis_title="Y",
         zaxis_title="Z (Elevación)"
     ),
-    title="Posición Solar en Coordenadas Esféricas",
+    title="Vista del Observador: Movimiento del Sol",
     height=700,
     width=900
 )
 
 st.plotly_chart(fig)
-
 
 
 #import math
