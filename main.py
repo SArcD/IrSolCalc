@@ -57,6 +57,51 @@ def generate_solar_path(latitude, fixed_hour):
 
     return pd.DataFrame({"Día del Año": days, "Azimut (°)": azimuths, "Elevación Solar (°)": elevations})
 
+
+import streamlit as st
+import math
+
+# Función para calcular la radiación solar
+def calculate_solar_power(latitude, day_of_year, local_hour, transmission_coefficient=0.75):
+    # Constante solar (W/m²)
+    S0 = 1361
+
+    # Calcular declinación solar (δ)
+    declination = 23.45 * math.sin(math.radians((360 / 365) * (day_of_year - 81)))
+
+    # Calcular ángulo horario (h) en grados
+    solar_hour = local_hour - 12  # Hora solar ajustada al mediodía
+    hour_angle = 15 * solar_hour
+
+    # Calcular altura solar (α)
+    sin_alpha = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
+                 math.cos(math.radians(latitude)) * math.cos(math.radians(declination)) * math.cos(math.radians(hour_angle)))
+
+    # Validar si el sol está por debajo del horizonte
+    if sin_alpha <= 0:
+        return 0  # No hay radiación solar durante la noche
+
+    # Calcular potencia recibida
+    P_received = S0 * transmission_coefficient * sin_alpha
+    return P_received
+
+# Interfaz de usuario en Streamlit
+st.title("Calculadora de Radiación Solar")
+st.write("Ingrese los datos necesarios para calcular la potencia de radiación solar recibida en un lugar específico.")
+
+# Entradas del usuario
+latitude = st.number_input("Latitud (grados, positivo para norte, negativo para sur):", value=0.0)
+day_of_year = st.slider("Día del año:", min_value=1, max_value=365, value=1)
+local_hour = st.slider("Hora local (formato 24h, ej. 13.5 para 13:30):", min_value=0.0, max_value=24.0, value=12.0)
+transmission_coefficient = st.slider("Coeficiente de transmisión atmosférica (0-1):", min_value=0.0, max_value=1.0, value=0.75)
+
+# Cálculo de la radiación solar
+power = calculate_solar_power(latitude, day_of_year, local_hour, transmission_coefficient)
+
+# Mostrar el resultado
+st.write(f"La potencia de radiación solar recibida es de aproximadamente **{power:.2f} W/m²**.")
+
+
 # Configuración de Streamlit
 st.title("Cálculo de Azimut y Elevación Solar")
 st.sidebar.header("Parámetros de Entrada")
