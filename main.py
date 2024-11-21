@@ -146,6 +146,21 @@ fig.update_layout(
     width=900
 )
 
+# Agregar plano del horizonte
+x_horiz = np.linspace(-1, 1, 100)
+y_horiz = np.linspace(-1, 1, 100)
+x_horiz, y_horiz = np.meshgrid(x_horiz, y_horiz)
+z_horiz = np.zeros_like(x_horiz)
+
+fig.add_trace(go.Surface(
+    x=x_horiz, y=y_horiz, z=z_horiz,
+    colorscale='Greens',
+    opacity=0.5,
+    name="Plano del Horizonte",
+    showscale=False
+))
+
+
 st.plotly_chart(fig)
 
 
