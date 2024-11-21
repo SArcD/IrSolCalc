@@ -404,11 +404,11 @@ def generate_daily_solar_position(latitude, day_of_year):
     })
 
 # Configuración de Streamlit
-st.title("Vista del Observador: Movimiento del Sol con Flecha Dinámica")
+st.title("Vista del Observador: Posición Solar basada en la Hora")
 
 # Inputs del usuario
-latitude = st.slider("Latitud", -90.0, 90.0, 19.43, step=0.1)
-day_of_year = st.slider("Día", 1, 365, 172)
+latitude = st.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
+day_of_year = st.slider("Día del Año", 1, 365, 172)
 
 # Generar datos de posición solar
 df_position = generate_daily_solar_position(latitude, day_of_year)
@@ -474,42 +474,6 @@ fig.add_trace(go.Surface(
     showscale=False
 ))
 
-# Agregar flechas y etiquetas de los puntos cardinales
-directions = {
-    "Norte": (0, 0.5, 0),
-    "Este": (0.5, 0, 0),
-    "Sur": (0, -0.5, 0),
-    "Oeste": (-0.5, 0, 0)
-}
-
-for name, coord in directions.items():
-    fig.add_trace(go.Scatter3d(
-        x=[0, coord[0]],
-        y=[0, coord[1]],
-        z=[0, coord[2]],
-        mode="lines+text",
-        text=[None, name],
-        textposition="top center",
-        line=dict(color="red", width=4),
-        name=name
-    ))
-
-# Agregar posiciones solares
-fig.add_trace(go.Scatter3d(
-    x=solar_x,
-    y=solar_y,
-    z=solar_z,
-    mode='markers+lines',
-    marker=dict(size=6, color="orange"),
-    hovertemplate=(
-        "Azimut: %{customdata[0]:.2f}°<br>" +
-        "Elevación: %{customdata[1]:.2f}°"
-    ),
-    customdata=np.stack((df_position["Azimut Solar (°)"], df_position["Elevación Solar (°)"]), axis=-1),
-    name="Posición Solar"
-))
-
-
 # Agregar posiciones solares con hover limitado
 fig.add_trace(go.Scatter3d(
     x=solar_x,
@@ -517,37 +481,19 @@ fig.add_trace(go.Scatter3d(
     z=solar_z,
     mode='markers+lines',
     marker=dict(size=6, color="orange"),
-    hovertemplate=(
-        "Azimut: %{customdata[0]:.2f}°<br>" +
-        "Elevación: %{customdata[1]:.2f}°"
-    ),
-    customdata=np.stack((df_position["Azimut Solar (°)"], df_position["Elevación Solar (°)"]), axis=-1),
     name="Posición Solar"
 ))
-
-
-# Configuración de hover restringido al punto más cercano
-fig.update_layout(
-    scene=dict(
-        xaxis_title="X (Azimut)",
-        yaxis_title="Y",
-        zaxis_title="Z (Elevación)"
-    ),
-    hovermode="closest",  # Hover activado solo en puntos de datos
-    height=700,
-    width=900,
-    title="Vista del Observador: Movimiento del Sol"
-)
-
 
 # Agregar flecha para la hora seleccionada
 fig.add_trace(go.Scatter3d(
     x=[0, arrow_x],
     y=[0, arrow_y],
     z=[0, arrow_z],
-    mode="lines",
+    mode="lines+text",
     line=dict(color="blue", width=5),
-    name="Flecha hacia el Sol"
+    text=f"Hora: {selected_hour}h<br>Azimut: {azim:.2f}°<br>Elevación: {elev:.2f}°",
+    textposition="top center",
+    name="Posición Solar Actual"
 ))
 
 fig.update_layout(
@@ -562,7 +508,6 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig)
-
 
 # Segunda sección: Cálculo de radiación solar
 st.subheader("Cálculo de Radiación Solar")
