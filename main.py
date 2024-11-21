@@ -510,7 +510,7 @@ fig.add_trace(go.Scatter3d(
 ))
 
 
-# Agregar posiciones solares con hovertemplate personalizado
+# Agregar posiciones solares con hover limitado
 fig.add_trace(go.Scatter3d(
     x=solar_x,
     y=solar_y,
@@ -524,6 +524,7 @@ fig.add_trace(go.Scatter3d(
     customdata=np.stack((df_position["Azimut Solar (°)"], df_position["Elevación Solar (°)"]), axis=-1),
     name="Posición Solar"
 ))
+
 
 # Configuración de hover restringido al punto más cercano
 fig.update_layout(
