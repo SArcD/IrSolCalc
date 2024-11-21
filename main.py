@@ -69,14 +69,14 @@ def generate_solar_path(latitude, day_of_year):
 st.title("Vista del Observador: Posición Solar en Coordenadas Esféricas")
 
 # Inputs del usuario
-latitude = st.slider("Latitud", -90.0, 90.0, 19.43, step=0.1)
-day_of_year = st.slider("Día", 1, 365, 172)
+latitude = st.slider("Latud", -90.0, 90.0, 19.43, step=0.1)
+day_of_year = st.slider("Da", 1, 365, 172)
 
 # Generar datos de posición solar
 df_position = generate_solar_path(latitude, day_of_year)
 
 # Deslizador para seleccionar la hora
-selected_hour = st.slider("Selecciona la hora del día:", min_value=0.0, max_value=24.0, step=0.5, value=12.0)
+selected_hour = st.slider("Selecciona la ho del día:", min_value=0.0, max_value=24.0, step=0.5, value=12.0)
 
 # Encontrar los datos de la posición solar en la hora seleccionada
 selected_row = df_position[df_position["Hora del Día"] == selected_hour]
