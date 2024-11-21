@@ -112,7 +112,7 @@ fig.add_trace(go.Scatter3d(
     y=solar_y,
     z=solar_z,
     mode='markers+lines',
-    marker=dict(size=6, color=df["Día del Año"], colorscale="Viridis", colorbar=dict(title="Día del Año")),
+    marker=dict(size=6, color=df["Día del Año"], colorscale="Viridis", colorbar=dict(title="Día del Año"), showscale=False)),
     hovertemplate=(
         "Día del Año: %{customdata[0]}<br>" +
         "Azimut: %{customdata[1]:.2f}°<br>" +
