@@ -84,6 +84,153 @@ fig.update_layout(
 )
 st.plotly_chart(fig)
 
+
+################################################################3
+
+import math
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
+# Funciones necesarias
+def calculate_declination(day_of_year):
+    """Calcula la declinación solar en función del día del año."""
+    return 23.45 * math.sin(math.radians((360 / 365) * (day_of_year - 81)))
+
+def calculate_equation_of_time(day_of_year):
+    """Calcula la ecuación del tiempo en minutos."""
+    B = math.radians((360 / 365) * (day_of_year - 81))
+    return 9.87 * math.sin(2 * B) - 7.53 * math.cos(B) - 1.5 * math.sin(B)
+
+def calculate_hour_angle(hour, equation_of_time):
+    """Corrige el ángulo horario por la ecuación del tiempo."""
+    solar_time = hour + (equation_of_time / 60)
+    return 15 * (solar_time - 12)
+
+def calculate_solar_position(latitude, declination, hour_angle):
+    """Calcula la elevación y azimut solar en grados."""
+    sin_altitude = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
+                    math.cos(math.radians(latitude)) * math.cos(math.radians(declination)) * math.cos(math.radians(hour_angle)))
+    elevation = math.degrees(math.asin(sin_altitude)) if sin_altitude > 0 else 0
+
+    cos_azimuth = (math.sin(math.radians(declination)) - 
+                   math.sin(math.radians(latitude)) * math.sin(math.radians(elevation))) / (
+                   math.cos(math.radians(latitude)) * math.cos(math.radians(elevation)))
+    azimuth = math.degrees(math.acos(cos_azimuth)) if elevation > 0 else 0
+
+    if hour_angle > 0:
+        azimuth = 360 - azimuth
+
+    return elevation, azimuth
+
+def generate_solar_path(latitude, fixed_hour):
+    """Genera los datos para azimut vs elevación solar."""
+    days_of_year = np.arange(1, 366)
+    elevations = []
+    azimuths = []
+    days = []
+
+    for day in days_of_year:
+        declination = calculate_declination(day)
+        eot = calculate_equation_of_time(day)
+        hour_angle = calculate_hour_angle(fixed_hour, eot)
+        elevation, azimuth = calculate_solar_position(latitude, declination, hour_angle)
+
+        if elevation > 0:  # Ignorar valores negativos de elevación
+            elevations.append(elevation)
+            azimuths.append(azimuth)
+            days.append(day)
+
+    return pd.DataFrame({"Día del Año": days, "Azimut (°)": azimuths, "Elevación Solar (°)": elevations})
+
+# Configuración de Streamlit
+st.title("Calculadora de Radiación Solar y Posición del Sol en Coordenadas Esféricas")
+
+# Inputs
+latitude = st.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
+fixed_hour = st.slider("Hora Fija (24h)", 0.0, 24.0, 12.0)
+
+# Generar datos de trayectoria solar
+df = generate_solar_path(latitude, fixed_hour)
+
+# Convertir a coordenadas esféricas (radio unitario)
+solar_positions = [
+    (
+        math.sin(math.radians(90 - elev)) * math.cos(math.radians(azim)),
+        math.sin(math.radians(90 - elev)) * math.sin(math.radians(azim)),
+        math.cos(math.radians(90 - elev))
+    )
+    for elev, azim in zip(df["Elevación Solar (°)"], df["Azimut (°)"])
+]
+
+solar_x, solar_y, solar_z = zip(*solar_positions)
+
+# Crear la esfera como referencia
+theta = np.linspace(0, 2 * np.pi, 100)
+phi = np.linspace(0, np.pi / 2, 100)  # Media esfera
+x = np.outer(np.sin(phi), np.cos(theta))
+y = np.outer(np.sin(phi), np.sin(theta))
+z = np.outer(np.cos(phi), np.ones_like(theta))
+
+# Crear gráfica 3D interactiva
+fig = go.Figure()
+
+# Agregar la media esfera
+fig.add_trace(go.Surface(
+    x=x, y=y, z=z,
+    colorscale='Blues',
+    opacity=0.3,
+    name="Media Esfera Celeste",
+    showscale=False
+))
+
+# Agregar la trayectoria solar
+fig.add_trace(go.Scatter3d(
+    x=solar_x,
+    y=solar_y,
+    z=solar_z,
+    mode='markers+lines',
+    marker=dict(size=6, color=df["Día del Año"], colorscale="Viridis", colorbar=dict(title="Día del Año")),
+    hovertemplate=(
+        "Día del Año: %{customdata[0]}<br>" +
+        "Azimut: %{customdata[1]:.2f}°<br>" +
+        "Elevación: %{customdata[2]:.2f}°"
+    ),
+    customdata=np.stack((df["Día del Año"], df["Azimut (°)"], df["Elevación Solar (°)"]), axis=-1),
+    name="Posición Solar"
+))
+
+# Agregar plano del horizonte
+x_horiz = np.linspace(-1, 1, 100)
+y_horiz = np.linspace(-1, 1, 100)
+x_horiz, y_horiz = np.meshgrid(x_horiz, y_horiz)
+z_horiz = np.zeros_like(x_horiz)
+
+fig.add_trace(go.Surface(
+    x=x_horiz, y=y_horiz, z=z_horiz,
+    colorscale='Greens',
+    opacity=0.5,
+    name="Plano del Horizonte",
+    showscale=False
+))
+
+# Configurar vista
+fig.update_layout(
+    scene=dict(
+        xaxis_title="X",
+        yaxis_title="Y",
+        zaxis_title="Z (Elevación)"
+    ),
+    title="Posición Solar en Coordenadas Esféricas",
+    height=700,
+    width=900
+)
+
+st.plotly_chart(fig)
+
+
+
 #import math
 #import numpy as np
 #import pandas as pd
