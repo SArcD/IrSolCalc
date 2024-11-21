@@ -172,7 +172,6 @@ fig_position.update_layout(
 )
 st.plotly_chart(fig_position)
 
-
 import math
 import numpy as np
 import pandas as pd
@@ -241,7 +240,43 @@ st.title("Posición Solar en 3D a lo Largo del Día")
 # Inputs del usuario
 latitude = st.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
 day_of_year = st.slider("Día del Año", 1, 365, 172)
-view_angle = st.slider("Ángulo de visión (°) (0° =
+view_angle = st.slider("Ángulo de visión (°) (0° = Norte)", 0, 360, 0)
+
+# Generar datos de posición solar
+df_position = generate_daily_solar_position(latitude, day_of_year)
+
+# Gráfica 3D interactiva
+st.write(f"**Gráfica 3D de la Posición Solar** para Latitud {latitude}° y Día del Año {day_of_year}")
+fig = go.Figure()
+
+fig.add_trace(go.Scatter3d(
+    x=df_position["Azimut Solar (°)"],
+    y=df_position["Hora del Día"],
+    z=df_position["Elevación Solar (°)"],
+    mode='markers+lines',
+    marker=dict(size=4, color=df_position["Hora del Día"], colorscale='Viridis', colorbar=dict(title="Hora del Día")),
+    line=dict(color='blue'),
+    name="Posición Solar"
+))
+
+fig.update_layout(
+    scene=dict(
+        xaxis_title="Azimut Solar (°)",
+        yaxis_title="Hora del Día",
+        zaxis_title="Elevación Solar (°)",
+        camera=dict(
+            eye=dict(x=2 * math.cos(math.radians(view_angle)), 
+                     y=2 * math.sin(math.radians(view_angle)), 
+                     z=1.5)  # Ajuste de altura del observador
+        )
+    ),
+    height=700,
+    width=900,
+    title="Posición Solar en 3D a lo Largo del Día"
+)
+
+st.plotly_chart(fig)
+
 
 
 
