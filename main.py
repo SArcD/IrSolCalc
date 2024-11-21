@@ -547,9 +547,9 @@ with tab2:
     st.write("Explora la variación de la radiación UV a lo largo de un día específico según la latitud y el día del año.")
 
     # Inputs del usuario en la barra lateral
-    st.sidebar.header("Parámetros de Entrada")
-    latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
-    day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
+    #st.sidebar.header("Parámetros de Entrada")
+    #latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
+    #day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
 
     # Generar datos y gráfica
     df = generate_uv_radiation_data(latitude, day_of_year)
