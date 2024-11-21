@@ -339,6 +339,7 @@ def generate_daily_solar_position(latitude, day_of_year):
         "Elevación Solar (°)": elevations,
         "Azimut Solar (°)": azimuths
     })
+
 import math
 import numpy as np
 import pandas as pd
@@ -364,13 +365,16 @@ def calculate_solar_position(latitude, declination, hour_angle):
     """Calcula la elevación solar (altitud) y azimut en grados."""
     sin_altitude = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
                     math.cos(math.radians(latitude)) * math.cos(math.radians(declination)) * math.cos(math.radians(hour_angle)))
-    elevation = math.degrees(math.asin(sin_altitude)) if sin_altitude > 0 else 0
+    if sin_altitude <= 0:  # Si el Sol está por debajo del horizonte
+        return None, None
 
-    cos_azimuth = (math.sin(math.radians(declination)) - 
+    elevation = math.degrees(math.asin(sin_altitude))
+
+    cos_azimuth = (math.sin(math.radians(declination)) -
                    math.sin(math.radians(latitude)) * math.sin(math.radians(elevation))) / (
                    math.cos(math.radians(latitude)) * math.cos(math.radians(elevation)))
-    azimuth = math.degrees(math.acos(cos_azimuth)) if elevation > 0 else 0
 
+    azimuth = math.degrees(math.acos(cos_azimuth)) if cos_azimuth <= 1 else 0
     if hour_angle > 0:
         azimuth = 360 - azimuth
 
@@ -379,9 +383,7 @@ def calculate_solar_position(latitude, declination, hour_angle):
 def generate_daily_solar_position(latitude, day_of_year):
     """Genera los datos de posición solar para todas las horas del día."""
     hours = np.arange(0, 24, 0.5)  # Horas del día en pasos de 0.5
-    elevations = []
-    azimuths = []
-    hours_list = []
+    elevations, azimuths, hours_list = [], [], []
 
     declination = calculate_declination(day_of_year)
     eot = calculate_equation_of_time(day_of_year)
@@ -390,7 +392,7 @@ def generate_daily_solar_position(latitude, day_of_year):
         hour_angle = calculate_hour_angle(hour, eot)
         elevation, azimuth = calculate_solar_position(latitude, declination, hour_angle)
 
-        if elevation > 0:  # Ignorar valores negativos (noche)
+        if elevation is not None and azimuth is not None:
             elevations.append(elevation)
             azimuths.append(azimuth)
             hours_list.append(hour)
@@ -402,7 +404,7 @@ def generate_daily_solar_position(latitude, day_of_year):
     })
 
 # Configuración de Streamlit
-st.title("Vista del Observador del Movimiento del Sol")
+st.title("Vista del Observador: Movimiento del Sol")
 
 # Inputs del usuario
 latitude = st.slider("Latitud", -90.0, 90.0, 19.43, step=0.1)
@@ -456,14 +458,39 @@ fig.add_trace(go.Surface(
     showscale=False
 ))
 
+# Agregar flechas y etiquetas de los puntos cardinales
+directions = {
+    "Norte": (0, 0.5, 0),
+    "Este": (0.5, 0, 0),
+    "Sur": (0, -0.5, 0),
+    "Oeste": (-0.5, 0, 0)
+}
+
+for name, coord in directions.items():
+    fig.add_trace(go.Scatter3d(
+        x=[0, coord[0]],
+        y=[0, coord[1]],
+        z=[0, coord[2]],
+        mode="lines+text",
+        text=[None, name],
+        textposition="top center",
+        line=dict(color="red", width=4),
+        name=name
+    ))
+
 # Agregar posiciones solares
 fig.add_trace(go.Scatter3d(
     x=solar_x,
     y=solar_y,
     z=solar_z,
     mode='markers+lines',
-    marker=dict(size=4, color=df_position["Hora del Día"], colorscale='Viridis', colorbar=dict(title="Hora del Día")),
+    marker=dict(size=6, color=df_position["Hora del Día"], colorscale='Viridis', colorbar=dict(title="Hora del Día")),
     line=dict(color='orange'),
+    hovertext=[
+        f"Hora: {hour}h<br>Elevación: {elev:.2f}°<br>Azimut: {azim:.2f}°"
+        for hour, elev, azim in zip(df_position["Hora del Día"], df_position["Elevación Solar (°)"], df_position["Azimut Solar (°)"])
+    ],
+    hoverinfo="text",
     name="Posición Solar"
 ))
 
@@ -471,10 +498,7 @@ fig.update_layout(
     scene=dict(
         xaxis_title="X (Azimut)",
         yaxis_title="Y",
-        zaxis_title="Z (Elevación)",
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        zaxis=dict(visible=True)
+        zaxis_title="Z (Elevación)"
     ),
     height=700,
     width=900,
@@ -482,6 +506,7 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig)
+
 
 
 # Segunda sección: Cálculo de radiación solar
