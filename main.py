@@ -4,6 +4,117 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+# Funciones necesarias
+def calculate_declination(day_of_year):
+    """Calcula la declinación solar en función del día del año."""
+    return 23.45 * math.sin(math.radians((360 / 365) * (day_of_year - 81)))
+
+def calculate_equation_of_time(day_of_year):
+    """Calcula la ecuación del tiempo en minutos."""
+    B = math.radians((360 / 365) * (day_of_year - 81))
+    return 9.87 * math.sin(2 * B) - 7.53 * math.cos(B) - 1.5 * math.sin(B)
+
+def calculate_hour_angle(hour, equation_of_time):
+    """Corrige el ángulo horario por la ecuación del tiempo."""
+    solar_time = hour + (equation_of_time / 60)
+    return 15 * (solar_time - 12)
+
+def calculate_solar_position(latitude, declination, hour_angle):
+    """Calcula la elevación y azimut solar en grados."""
+    sin_altitude = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
+                    math.cos(math.radians(latitude)) * math.cos(math.radians(declination)) * math.cos(math.radians(hour_angle)))
+    elevation = math.degrees(math.asin(sin_altitude)) if sin_altitude > 0 else 0
+
+    cos_azimuth = (math.sin(math.radians(declination)) - 
+                   math.sin(math.radians(latitude)) * math.sin(math.radians(elevation))) / (
+                   math.cos(math.radians(latitude)) * math.cos(math.radians(elevation)))
+    azimuth = math.degrees(math.acos(cos_azimuth)) if elevation > 0 else 0
+
+    if hour_angle > 0:
+        azimuth = 360 - azimuth
+
+    return elevation, azimuth
+
+def generate_solar_path(latitude, fixed_hour):
+    """Genera los datos para azimut vs elevación solar."""
+    days_of_year = np.arange(1, 366)
+    elevations = []
+    azimuths = []
+    days = []
+
+    for day in days_of_year:
+        declination = calculate_declination(day)
+        eot = calculate_equation_of_time(day)
+        hour_angle = calculate_hour_angle(fixed_hour, eot)
+        elevation, azimuth = calculate_solar_position(latitude, declination, hour_angle)
+
+        if elevation > 0:  # Ignorar valores negativos de elevación
+            elevations.append(elevation)
+            azimuths.append(azimuth)
+            days.append(day)
+
+    return pd.DataFrame({"Día del Año": days, "Azimut (°)": azimuths, "Elevación Solar (°)": elevations})
+
+# Configuración de Streamlit
+st.title("Calculadora de Radiación Solar y Posición del Sol")
+
+# Primera sección: Gráfica de Azimut vs Elevación Solar
+st.subheader("Gráfica de Azimut vs Elevación Solar")
+latitude = st.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
+fixed_hour = st.slider("Hora Fija (24h)", 0.0, 24.0, 12.0)
+
+df = generate_solar_path(latitude, fixed_hour)
+
+st.write(f"**Azimut y Elevación Solar** para Latitud {latitude}° y Hora Fija {fixed_hour}:00")
+fig = px.scatter(
+    df,
+    x="Azimut (°)",
+    y="Elevación Solar (°)",
+    color="Día del Año",
+    color_continuous_scale="Viridis",
+    title="Azimut vs Elevación Solar",
+    labels={"Día del Año": "Día del Año"}
+)
+fig.update_layout(
+    xaxis_title="Azimut Solar (°)",
+    yaxis_title="Elevación Solar (°)",
+    coloraxis_colorbar=dict(title="Día del Año"),
+    height=600,
+    width=900
+)
+st.plotly_chart(fig)
+
+# Segunda sección: Cálculo de radiación solar
+st.subheader("Cálculo de Radiación Solar")
+day_of_year = st.slider("Día del Año", 1, 365, 172)
+local_hour = st.slider("Hora Local (24h)", 0.0, 24.0, 12.0)
+transmission_coefficient = st.slider("Coeficiente de Transmisión Atmosférica", 0.0, 1.0, 0.75)
+
+def calculate_solar_power(latitude, day_of_year, local_hour, transmission_coefficient):
+    S0 = 1361  # Constante solar (W/m²)
+    declination = calculate_declination(day_of_year)
+    solar_hour = local_hour - 12
+    hour_angle = 15 * solar_hour
+
+    sin_alpha = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
+                 math.cos(math.radians(latitude)) * math.cos(math.radians(declination)) * math.cos(math.radians(hour_angle)))
+
+    if sin_alpha <= 0:
+        return 0
+
+    return S0 * transmission_coefficient * sin_alpha
+
+power = calculate_solar_power(latitude, day_of_year, local_hour, transmission_coefficient)
+st.write(f"La potencia de radiación solar recibida es de aproximadamente **{power:.2f} W/m²**.")
+
+
+
+import math
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+
 # Funciones de cálculo
 def calculate_declination(day_of_year):
     """Calcula la declinación solar en función del día del año."""
