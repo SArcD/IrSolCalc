@@ -509,6 +509,36 @@ fig.add_trace(go.Scatter3d(
     name="Posición Solar"
 ))
 
+
+# Agregar posiciones solares con hovertemplate personalizado
+fig.add_trace(go.Scatter3d(
+    x=solar_x,
+    y=solar_y,
+    z=solar_z,
+    mode='markers+lines',
+    marker=dict(size=6, color="orange"),
+    hovertemplate=(
+        "Azimut: %{customdata[0]:.2f}°<br>" +
+        "Elevación: %{customdata[1]:.2f}°"
+    ),
+    customdata=np.stack((df_position["Azimut Solar (°)"], df_position["Elevación Solar (°)"]), axis=-1),
+    name="Posición Solar"
+))
+
+# Configuración de hover restringido al punto más cercano
+fig.update_layout(
+    scene=dict(
+        xaxis_title="X (Azimut)",
+        yaxis_title="Y",
+        zaxis_title="Z (Elevación)"
+    ),
+    hovermode="closest",  # Hover activado solo en puntos de datos
+    height=700,
+    width=900,
+    title="Vista del Observador: Movimiento del Sol"
+)
+
+
 # Agregar flecha para la hora seleccionada
 fig.add_trace(go.Scatter3d(
     x=[0, arrow_x],
