@@ -340,19 +340,6 @@ def generate_daily_solar_position(latitude, day_of_year):
         "Azimut Solar (°)": azimuths
     })
 
-# Función para transformar a coordenadas esféricas
-def spherical_to_cartesian(elevation, azimuth):
-    """Transforma coordenadas esféricas a cartesianas."""
-    r = 1  # Radio unitario para representación en esfera
-    theta = math.radians(90 - elevation)  # Ángulo polar
-    phi = math.radians(azimuth)  # Ángulo azimutal
-
-    x = r * math.sin(theta) * math.cos(phi)
-    y = r * math.sin(theta) * math.sin(phi)
-    z = r * math.cos(theta)
-
-    return x, y, z
-
 # Configuración de Streamlit
 st.title("Posición Solar en Coordenadas Esféricas")
 
@@ -363,38 +350,60 @@ day_of_year = st.slider("Día", 1, 365, 172)
 # Generar datos de posición solar
 df_position = generate_daily_solar_position(latitude, day_of_year)
 
-# Transformar a coordenadas cartesianas
-cartesian_coords = [spherical_to_cartesian(elev, azim) for elev, azim in zip(df_position["Elevación Solar (°)"], df_position["Azimut Solar (°)"])]
-x, y, z = zip(*cartesian_coords)
+# Crear una esfera para referencia visual
+theta = np.linspace(0, 2 * np.pi, 100)
+phi = np.linspace(0, np.pi, 100)
+x = np.outer(np.sin(phi), np.cos(theta))
+y = np.outer(np.sin(phi), np.sin(theta))
+z = np.outer(np.cos(phi), np.ones_like(theta))
+
+# Posiciones del Sol en coordenadas esféricas
+solar_positions = [
+    (
+        math.sin(math.radians(90 - elev)) * math.cos(math.radians(azim)),
+        math.sin(math.radians(90 - elev)) * math.sin(math.radians(azim)),
+        math.cos(math.radians(90 - elev))
+    )
+    for elev, azim in zip(df_position["Elevación Solar (°)"], df_position["Azimut Solar (°)"])
+]
+
+solar_x, solar_y, solar_z = zip(*solar_positions)
 
 # Gráfica 3D interactiva
-st.write(f"**Gráfica 3D de la Posición Solar en Coordenadas Esféricas** para Latitud {latitude}° y Día del Año {day_of_year}")
 fig = go.Figure()
 
+# Agregar esfera de referencia
+fig.add_trace(go.Surface(
+    x=x, y=y, z=z, 
+    colorscale='Blues',
+    opacity=0.5,
+    showscale=False,
+    name="Esfera de Referencia"
+))
+
+# Agregar posiciones solares
 fig.add_trace(go.Scatter3d(
-    x=x,
-    y=y,
-    z=z,
+    x=solar_x,
+    y=solar_y,
+    z=solar_z,
     mode='markers+lines',
     marker=dict(size=4, color=df_position["Hora del Día"], colorscale='Viridis', colorbar=dict(title="Hora del Día")),
-    line=dict(color='blue'),
+    line=dict(color='orange'),
     name="Posición Solar"
 ))
 
 fig.update_layout(
     scene=dict(
-        xaxis_title="X (Coordenadas Cartesianas)",
-        yaxis_title="Y (Coordenadas Cartesianas)",
-        zaxis_title="Z (Altura en Coordenadas Cartesianas)"
+        xaxis_title="X (Azimut)",
+        yaxis_title="Y",
+        zaxis_title="Z (Elevación)"
     ),
     height=700,
     width=900,
-    title="Posición Solar en Coordenadas Esféricas a lo Largo del Día"
+    title="Posición Solar en Coordenadas Esféricas"
 )
 
 st.plotly_chart(fig)
-
-
 
 
 # Segunda sección: Cálculo de radiación solar
