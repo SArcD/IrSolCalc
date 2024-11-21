@@ -396,7 +396,12 @@ with tab2:
         T_a = 0.75  # Transmisión atmosférica promedio
         return S0 * T_a * math.sin(math.radians(altitude)) if altitude > 0 else 0
 
-    def generate_radiation_data(latitude, selected_hour):
+    def calculate_uv_radiation(total_radiation):
+        """Calcula la fracción de radiación solar correspondiente a la luz UV."""
+        uv_fraction = 0.05  # 5% de la radiación total
+        return total_radiation * uv_fraction
+
+    def generate_radiation_data(latitude, selected_hour, radiation_type="Total"):
         """Genera los datos de radiación para cada día del año."""
         days_of_year = np.arange(1, 366)  # Días del año
         radiations = []
@@ -407,7 +412,14 @@ with tab2:
             eot = calculate_equation_of_time(day)  # Ecuación del tiempo
             hour_angle = calculate_hour_angle(selected_hour, eot)
             altitude = calculate_solar_position(latitude, declination, hour_angle)
-            radiation = calculate_radiation(altitude)
+            total_radiation = calculate_radiation(altitude)
+
+            if radiation_type == "Total":
+                radiation = total_radiation
+            elif radiation_type == "UV":
+                radiation = calculate_uv_radiation(total_radiation)
+            else:
+                radiation = 0  # Default case
 
             altitudes.append(altitude)
             radiations.append(radiation)
@@ -418,27 +430,48 @@ with tab2:
     st.title("Variación de Radiación Solar")
     st.write("Explora cómo varía la radiación solar a lo largo del año según la latitud y la hora fija.")
 
-    # Inputs del usuario en la barra lateral
-    #st.sidebar.header("Parámetros de Entrada")
-    #latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
-    #selected_hour = st.sidebar.slider("Hora Fija (24h)", 0.0, 24.0, 12.0, step=0.5)
+# Barra lateral para los inputs
+#st.sidebar.header("Parámetros de Entrada")
+#latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
+#selected_hour = st.sidebar.slider("Hora Fija (24h)", 0.0, 24.0, 12.0, step=0.5)
 
-    # Generar datos y gráfica
-    df = generate_radiation_data(latitude, selected_hour)
-    fig = px.line(
-        df,
-        x="Día del Año",
-        y="Radiación (W/m²)",
-        title=f"Variación de Radiación Solar para Latitud {latitude}° - Hora Fija: {selected_hour}:00",
-        labels={"Día del Año": "Día del Año", "Radiación (W/m²)": "Radiación (W/m²)"},
-    )
-    fig.update_layout(
-        xaxis_title="Día del Año",
-        yaxis_title="Radiación Solar (W/m²)",
-        height=600,
-        width=900
-    )
+    # Pestañas para elegir entre radiación total o UV
+    tab1, tab2 = st.tabs(["Radiación Total", "Radiación UV"])
 
-    #     Mostrar la gráfica
-    st.plotly_chart(fig)
+    with tab1:
+        st.subheader("Radiación Solar Total")
+        df_total = generate_radiation_data(latitude, selected_hour, radiation_type="Total")
+        fig_total = px.line(
+            df_total,
+            x="Día del Año",
+            y="Radiación (W/m²)",
+            title=f"Variación de Radiación Solar Total para Latitud {latitude}° - Hora Fija: {selected_hour}:00",
+            labels={"Día del Año": "Día del Año", "Radiación (W/m²)": "Radiación Total (W/m²)"},
+        )
+        fig_total.update_layout(
+            xaxis_title="Día del Año",
+            yaxis_title="Radiación Solar Total (W/m²)",
+            height=600,
+            width=900
+        )
+        st.plotly_chart(fig_total)
+
+    with tab2:
+        st.subheader("Radiación UV")
+        df_uv = generate_radiation_data(latitude, selected_hour, radiation_type="UV")
+        fig_uv = px.line(
+            df_uv,
+            x="Día del Año",
+            y="Radiación (W/m²)",
+            title=f"Variación de Radiación UV para Latitud {latitude}° - Hora Fija: {selected_hour}:00",
+            labels={"Día del Año": "Día del Año", "Radiación (W/m²)": "Radiación UV (W/m²)"},
+        )
+        fig_uv.update_layout(
+            xaxis_title="Día del Año",
+            yaxis_title="Radiación UV (W/m²)",
+            height=600,
+            width=900
+        )
+        st.plotly_chart(fig_uv)
+
 
