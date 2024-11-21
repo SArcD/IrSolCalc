@@ -407,8 +407,8 @@ def generate_daily_solar_position(latitude, day_of_year):
 st.title("Vista del Observador: Posición Solar basada en la Hora")
 
 # Inputs del usuario
-latitude = st.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
-day_of_year = st.slider("Día del Año", 1, 365, 172)
+latitude = st.slider("Latitud", -90.0, 90.0, 19.43, step=0.1)
+day_of_year = st.slider("Día", 1, 365, 172)
 
 # Generar datos de posición solar
 df_position = generate_daily_solar_position(latitude, day_of_year)
