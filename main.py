@@ -38,31 +38,28 @@ def calculate_solar_position(latitude, declination, hour_angle):
 
     return elevation, azimuth
 
-def generate_daily_solar_position(latitude, day_of_year):
-    """Genera los datos de posición solar para todas las horas del día."""
-    hours = np.arange(0, 24, 0.5)
-    elevations, azimuths, hours_list = [], [], []
+def generate_analemma(latitude, fixed_hour):
+    """Genera los datos para el analema."""
+    days_of_year = np.arange(1, 366)
+    elevations = []
+    azimuths = []
+    days = []
 
-    declination = calculate_declination(day_of_year)
-    eot = calculate_equation_of_time(day_of_year)
-
-    for hour in hours:
-        hour_angle = calculate_hour_angle(hour, eot)
+    for day in days_of_year:
+        declination = calculate_declination(day)
+        eot = calculate_equation_of_time(day)
+        hour_angle = calculate_hour_angle(fixed_hour, eot)
         elevation, azimuth = calculate_solar_position(latitude, declination, hour_angle)
 
         if elevation is not None:
             elevations.append(elevation)
             azimuths.append(azimuth)
-            hours_list.append(hour)
+            days.append(day)
 
-    return pd.DataFrame({
-        "Hora del Día": hours_list,
-        "Elevación Solar (°)": elevations,
-        "Azimut Solar (°)": azimuths
-    })
+    return pd.DataFrame({"Día del Año": days, "Azimut (°)": azimuths, "Elevación Solar (°)": elevations})
 
 # Configuración de Streamlit
-st.title("Vista del Observador: Posición Solar y Radiación Solar")
+st.title("Vista del Observador: Posición Solar, Analema y Radiación")
 
 # Barra lateral para los inputs
 st.sidebar.header("Parámetros de Entrada")
@@ -70,103 +67,54 @@ latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
 day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
 selected_hour = st.sidebar.slider("Hora del Día (24h)", 0.0, 24.0, 12.0, step=0.5)
 
-# Generar datos de posición solar
-df_position = generate_daily_solar_position(latitude, day_of_year)
+# Gráfica de la posición solar
+st.subheader("Gráfica de la Posición Solar")
+df_position = generate_analemma(latitude, selected_hour)
 
-# Seleccionar posición solar para la hora elegida
-selected_row = df_position[df_position["Hora del Día"] == selected_hour]
-if not selected_row.empty:
-    elev = selected_row["Elevación Solar (°)"].values[0]
-    azim = selected_row["Azimut Solar (°)"].values[0]
-else:
-    elev = azim = 0
+# Generar analema
+df_analemma = generate_analemma(latitude, selected_hour)
 
-# Transformar a coordenadas esféricas
+# Convertir a coordenadas esféricas
 solar_positions = [
     (
         math.sin(math.radians(90 - elev)) * math.cos(math.radians(azim)),
         math.sin(math.radians(90 - elev)) * math.sin(math.radians(azim)),
         math.cos(math.radians(90 - elev))
     )
-    for elev, azim in zip(df_position["Elevación Solar (°)"], df_position["Azimut Solar (°)"])
+    for elev, azim in zip(df_analemma["Elevación Solar (°)"], df_analemma["Azimut (°)"])
 ]
 
 solar_x, solar_y, solar_z = zip(*solar_positions)
 
-# Coordenadas para la flecha
-arrow_x = math.sin(math.radians(90 - elev)) * math.cos(math.radians(azim))
-arrow_y = math.sin(math.radians(90 - elev)) * math.sin(math.radians(azim))
-arrow_z = math.cos(math.radians(90 - elev))
-
-# Crear la media esfera
-theta = np.linspace(0, 2 * np.pi, 100)
-phi = np.linspace(0, np.pi / 2, 100)
-x = np.outer(np.sin(phi), np.cos(theta))
-y = np.outer(np.sin(phi), np.sin(theta))
-z = np.outer(np.cos(phi), np.ones_like(theta))
-
-# Gráfica 3D
-fig = go.Figure()
-
-# Media esfera
-fig.add_trace(go.Surface(
-    x=x, y=y, z=z,
-    colorscale='Blues',
-    opacity=0.3,
-    showscale=False,
-    name="Media Esfera Celeste"
-))
-
-# Trayectoria solar
-fig.add_trace(go.Scatter3d(
+# Crear gráfica del analema
+fig_analemma = px.scatter_3d(
+    df_analemma,
     x=solar_x,
     y=solar_y,
     z=solar_z,
-    mode='markers+lines',
-    marker=dict(size=6, color="orange"),
-    name="Trayectoria Solar"
-))
-
-# Flecha para la hora seleccionada
-fig.add_trace(go.Scatter3d(
-    x=[0, arrow_x],
-    y=[0, arrow_y],
-    z=[0, arrow_z],
-    mode="lines+text",
-    line=dict(color="blue", width=5),
-    text=f"Hora: {selected_hour}h<br>Azimut: {azim:.2f}°<br>Elevación: {elev:.2f}°",
-    textposition="top center",
-    name="Posición Solar Actual"
-))
-
-# Plano del horizonte
-x_horiz = np.linspace(-1, 1, 100)
-y_horiz = np.linspace(-1, 1, 100)
-x_horiz, y_horiz = np.meshgrid(x_horiz, y_horiz)
-z_horiz = np.zeros_like(x_horiz)
-
-fig.add_trace(go.Surface(
-    x=x_horiz, y=y_horiz, z=z_horiz,
-    colorscale='Greens',
-    opacity=0.5,
-    showscale=False,
-    name="Plano del Horizonte"
-))
-
-fig.update_layout(
+    color="Día del Año",
+    title="Gráfica del Analema Solar",
+    labels={
+        "x": "Azimut (°)",
+        "y": "Elevación Solar (°)",
+        "z": "Día del Año"
+    },
+)
+fig_analemma.update_traces(marker=dict(size=4))
+fig_analemma.update_layout(
     scene=dict(
         xaxis_title="X (Azimut)",
         yaxis_title="Y",
         zaxis_title="Z (Elevación)"
     ),
     height=700,
-    width=900,
-    title="Vista del Observador: Movimiento del Sol"
+    width=900
 )
 
-st.plotly_chart(fig)
+# Mostrar gráfica del analema
+st.plotly_chart(fig_analemma)
 
-# Sección de Radiación Solar
+# Sección de radiación solar
 st.subheader("Cálculo de Radiación Solar")
 transmission_coefficient = st.sidebar.slider("Coeficiente de Transmisión", 0.0, 1.0, 0.75)
 
