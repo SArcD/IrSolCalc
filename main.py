@@ -278,6 +278,123 @@ fig.update_layout(
 st.plotly_chart(fig)
 
 
+import math
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
+
+# Funciones necesarias
+def calculate_declination(day_of_year):
+    """Calcula la declinación solar en función del día del año."""
+    return 23.45 * math.sin(math.radians((360 / 365) * (day_of_year - 81)))
+
+def calculate_equation_of_time(day_of_year):
+    """Calcula la ecuación del tiempo en minutos."""
+    B = math.radians((360 / 365) * (day_of_year - 81))
+    return 9.87 * math.sin(2 * B) - 7.53 * math.cos(B) - 1.5 * math.sin(B)
+
+def calculate_hour_angle(hour, equation_of_time):
+    """Corrige el ángulo horario por la ecuación del tiempo."""
+    solar_time = hour + (equation_of_time / 60)
+    return 15 * (solar_time - 12)
+
+def calculate_solar_position(latitude, declination, hour_angle):
+    """Calcula la elevación solar (altitud) y azimut en grados."""
+    sin_altitude = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
+                    math.cos(math.radians(latitude)) * math.cos(math.radians(declination)) * math.cos(math.radians(hour_angle)))
+    elevation = math.degrees(math.asin(sin_altitude)) if sin_altitude > 0 else 0
+
+    cos_azimuth = (math.sin(math.radians(declination)) - 
+                   math.sin(math.radians(latitude)) * math.sin(math.radians(elevation))) / (
+                   math.cos(math.radians(latitude)) * math.cos(math.radians(elevation)))
+    azimuth = math.degrees(math.acos(cos_azimuth)) if elevation > 0 else 0
+
+    if hour_angle > 0:
+        azimuth = 360 - azimuth
+
+    return elevation, azimuth
+
+def generate_daily_solar_position(latitude, day_of_year):
+    """Genera los datos de posición solar para todas las horas del día."""
+    hours = np.arange(0, 24, 0.5)  # Horas del día en pasos de 0.5
+    elevations = []
+    azimuths = []
+    hours_list = []
+
+    declination = calculate_declination(day_of_year)
+    eot = calculate_equation_of_time(day_of_year)
+
+    for hour in hours:
+        hour_angle = calculate_hour_angle(hour, eot)
+        elevation, azimuth = calculate_solar_position(latitude, declination, hour_angle)
+
+        if elevation > 0:  # Ignorar valores negativos (noche)
+            elevations.append(elevation)
+            azimuths.append(azimuth)
+            hours_list.append(hour)
+
+    return pd.DataFrame({
+        "Hora del Día": hours_list,
+        "Elevación Solar (°)": elevations,
+        "Azimut Solar (°)": azimuths
+    })
+
+# Función para transformar a coordenadas esféricas
+def spherical_to_cartesian(elevation, azimuth):
+    """Transforma coordenadas esféricas a cartesianas."""
+    r = 1  # Radio unitario para representación en esfera
+    theta = math.radians(90 - elevation)  # Ángulo polar
+    phi = math.radians(azimuth)  # Ángulo azimutal
+
+    x = r * math.sin(theta) * math.cos(phi)
+    y = r * math.sin(theta) * math.sin(phi)
+    z = r * math.cos(theta)
+
+    return x, y, z
+
+# Configuración de Streamlit
+st.title("Posición Solar en Coordenadas Esféricas")
+
+# Inputs del usuario
+latitude = st.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
+day_of_year = st.slider("Día del Año", 1, 365, 172)
+
+# Generar datos de posición solar
+df_position = generate_daily_solar_position(latitude, day_of_year)
+
+# Transformar a coordenadas cartesianas
+cartesian_coords = [spherical_to_cartesian(elev, azim) for elev, azim in zip(df_position["Elevación Solar (°)"], df_position["Azimut Solar (°)"])]
+x, y, z = zip(*cartesian_coords)
+
+# Gráfica 3D interactiva
+st.write(f"**Gráfica 3D de la Posición Solar en Coordenadas Esféricas** para Latitud {latitude}° y Día del Año {day_of_year}")
+fig = go.Figure()
+
+fig.add_trace(go.Scatter3d(
+    x=x,
+    y=y,
+    z=z,
+    mode='markers+lines',
+    marker=dict(size=4, color=df_position["Hora del Día"], colorscale='Viridis', colorbar=dict(title="Hora del Día")),
+    line=dict(color='blue'),
+    name="Posición Solar"
+))
+
+fig.update_layout(
+    scene=dict(
+        xaxis_title="X (Coordenadas Cartesianas)",
+        yaxis_title="Y (Coordenadas Cartesianas)",
+        zaxis_title="Z (Altura en Coordenadas Cartesianas)"
+    ),
+    height=700,
+    width=900,
+    title="Posición Solar en Coordenadas Esféricas a lo Largo del Día"
+)
+
+st.plotly_chart(fig)
+
+
 
 
 # Segunda sección: Cálculo de radiación solar
