@@ -522,28 +522,7 @@ with tab2:
             "Radiación UV (W/m²)": uv_radiations
         })
 
-    # Configuración de Streamlit
-    st.title("Variación de Radiación UV")
-    st.write("Explora la variación de la radiación Solar a lo largo de un día específico según la latitud y el día del año.")
 
-    # Generar datos y gráfica
-    df = generate_uv_radiation_data(latitude, day_of_year)
-    fig = px.line(
-        df,
-        x="Hora del Día",
-        y="Radiación Solar (W/m²)",
-        title=f"Variación de Radiación Solar para Latitud {latitude}° - Día del Año {day_of_year}",
-        labels={"Hora del Día": "Hora del Día", "Radiación Solar (W/m²)": "Radiación Solar (W/m²)"},
-    )
-    fig.update_layout(
-        xaxis_title="Hora del Día",
-        yaxis_title="Radiación Solar (W/m²)",
-        height=600,
-        width=900
-    )
-
-    # Mostrar la gráfica
-    st.plotly_chart(fig)
 
 
 
