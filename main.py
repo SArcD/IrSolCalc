@@ -184,12 +184,11 @@ with tab1:
         title="Vista del Observador: Movimiento del Sol"
     )
 
-    # Agregar flechas y etiquetas de los puntos cardinales
     directions = {
-        "Norte": (0, 0.5, 0),
-        "Este": (0.5, 0, 0),
-        "Sur": (0, -0.5, 0),
-        "Oeste": (-0.5, 0, 0)
+    "Norte": (0, 1, 0),   # Norte en el eje positivo Y
+    "Este": (1, 0, 0),    # Este en el eje positivo X
+    "Sur": (0, -1, 0),    # Sur en el eje negativo Y
+    "Oeste": (-1, 0, 0)   # Oeste en el eje negativo X
     }
 
     for name, coord in directions.items():
@@ -385,11 +384,18 @@ with tab1:
 
 
     # Agregar flechas y etiquetas de los puntos cardinales
+    #directions = {
+    #    "Norte": (0, 0.5, 0),
+    #    "Este": (0.5, 0, 0),
+    #    "Sur": (0, -0.5, 0),
+    #    "Oeste": (-0.5, 0, 0)
+    #}
+
     directions = {
-        "Norte": (0, 0.5, 0),
-        "Este": (0.5, 0, 0),
-        "Sur": (0, -0.5, 0),
-        "Oeste": (-0.5, 0, 0)
+    "Norte": (0, 1, 0),   # Norte en el eje positivo Y
+    "Este": (1, 0, 0),    # Este en el eje positivo X
+    "Sur": (0, -1, 0),    # Sur en el eje negativo Y
+    "Oeste": (-1, 0, 0)   # Oeste en el eje negativo X
     }
 
     for name, coord in directions.items():
