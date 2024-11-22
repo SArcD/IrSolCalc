@@ -334,14 +334,26 @@ with tab1:
     ))
 
     # Flecha para la hora seleccionada
+    #fig.add_trace(go.Scatter3d(
+    #    x=[0, arrow_x],
+    #    y=[0, arrow_y],
+    #    z=[0, arrow_z],
+    #    mode="lines+text",
+    #    line=dict(color="blue", width=5),
+    #    text=f"Hora: {selected_hour}h<br>Azimut: {azim:.2f}°<br>Elevación: {elev:.2f}°",
+    #    textposition="top center",
+    #    name="Posición Solar Actual"
+    #))
+
+    # Flecha para la hora seleccionada
     fig.add_trace(go.Scatter3d(
-        x=[0, arrow_x],
+        x=[0, arrow_x],  # Coordenadas de la flecha
         y=[0, arrow_y],
         z=[0, arrow_z],
         mode="lines+text",
         line=dict(color="blue", width=5),
-        text=f"Hora: {selected_hour}h<br>Azimut: {azim:.2f}°<br>Elevación: {elev:.2f}°",
-        textposition="top center",
+        text=[None, f"Hora: {selected_hour}h<br>Azimut: {azim:.2f}°<br>Elevación: {elev:.2f}°"],  # Solo texto en el extremo
+        textposition="top center",  # Posición del texto
         name="Posición Solar Actual"
     ))
 
