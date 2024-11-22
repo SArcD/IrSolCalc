@@ -560,7 +560,7 @@ with tab2:
                 altitudes.append(altitude)
                 radiations.append(radiation)
 
-            return pd.DataFrame({"Día del Año": days_of_year, "Altitud Solar (°)": altitudes, "Radiación (W/m²)": radiations})
+            return pd.DataFrame({"Día del Año": days_of_year, "Altitud Solar (°)": altitudes, "Radiación UV (W/m²)": radiations})
 
 
 
@@ -573,11 +573,11 @@ with tab2:
             x="Día del Año",
             y="Radiación UV (W/m²)",
             title=f"Variación de Radiación Solar Total para Latitud {latitude}° - Hora Fija: {selected_hour}:00",
-            labels={"Día del Año": "Día del Año", "Radiación (W/m²)": "Radiación UV (W/m²)"},
+            labels={"Día del Año": "Día del Año", "Radiación UV (W/m²)": "Radiación UV (W/m²)"},
         )
         fig_total.update_layout(
             xaxis_title="Día del Año",
-            yaxis_title="Radiación Solar UV (W/m²)",
+            yaxis_title="Radiación UV (W/m²)",
             height=600,
             width=900
         )
