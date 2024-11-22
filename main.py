@@ -73,6 +73,7 @@ with tab1:
     # Barra lateral para los inputs
     st.sidebar.header("Parámetros de Entrada")
     latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
+    latitude=-latitude
     day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
     selected_hour = st.sidebar.slider("Hora del Día (24h)", 0.0, 24.0, 12.0, step=0.5)
 
