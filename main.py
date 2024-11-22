@@ -390,9 +390,9 @@ with tab1:
 
 
     directions = {
-        "Oeste": (0, 1, 0),
+        "Este": (0, 1, 0),
         "Sur": (1, 0, 0),
-        "Este": (0, -1, 0),
+        "Oeste": (0, -1, 0),
         "Norte": (-1, 0, 0)
     }
 
