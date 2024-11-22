@@ -676,12 +676,40 @@ with tab2:
 
     #day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
 
-    # Generar datos y gráfica
-        df = generate_radiation_data(latitude, day_of_year)
+        # Generar datos para la radiación UV
+        def generate_uv_radiation_data(latitude, day_of_year):
+            """Genera los datos de radiación UV para cada hora del día."""
+            hours_of_day = np.arange(0, 24, 0.5)  # Horas del día en intervalos de 0.5 horas
+            radiations = []
+            uv_radiations = []
+            altitudes = []
+
+            declination = calculate_declination(day_of_year)
+            eot = calculate_equation_of_time(day_of_year)  # Ecuación del tiempo
+
+            for hour in hours_of_day:
+                hour_angle = calculate_hour_angle(hour, eot)
+                altitude = calculate_solar_position(latitude, declination, hour_angle)
+                total_radiation = calculate_radiation(altitude)
+                uv_radiation = calculate_uv_radiation(total_radiation)
+
+                altitudes.append(altitude)
+                radiations.append(total_radiation)
+                uv_radiations.append(uv_radiation)
+
+            return pd.DataFrame({
+                "Hora del Día": hours_of_day,
+                "Altitud Solar (°)": altitudes,
+                "Radiación Total (W/m²)": radiations,
+                "Radiación UV (W/m²)": uv_radiations
+            })
+
+        # Usar la columna de radiación UV en la gráfica
+        df = generate_uv_radiation_data(latitude, day_of_year)
         fig = px.line(
             df,
             x="Hora del Día",
-            y="Radiación (W/m²)",
+            y="Radiación UV (W/m²)",  # Aquí usamos la columna para radiación UV
             title=f"Variación de Radiación UV para Latitud {latitude}° - Día del Año {day_of_year}",
             labels={"Hora del Día": "Hora del Día", "Radiación UV (W/m²)": "Radiación UV (W/m²)"},
         )
@@ -694,7 +722,6 @@ with tab2:
 
         # Mostrar la gráfica
         st.plotly_chart(fig)
-        
 
 
     
