@@ -572,7 +572,7 @@ with tab2:
             df_total,
             x="Día del Año",
             y="Radiación UV (W/m²)",
-            title=f"Variación de Radiación Solar Total para Latitud {latitude}° - Hora Fija: {selected_hour}:00",
+            title=f"Variación de Radiación Solar UV para Latitud {latitude}° - Hora Fija: {selected_hour}:00",
             labels={"Día del Año": "Día del Año", "Radiación UV (W/m²)": "Radiación UV (W/m²)"},
         )
         fig_total.update_layout(
