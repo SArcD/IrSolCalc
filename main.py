@@ -109,7 +109,7 @@ with tab1:
     phi = np.linspace(0, np.pi / 2, 100)
     x = np.outer(np.sin(phi), np.cos(theta))
     y = np.outer(np.sin(phi), np.sin(theta))
-    z = np.outer(np.cos(phi), np.ones_like(theta))
+    z = -np.outer(np.cos(phi), np.ones_like(theta))
 
     # Gráfica 3D
     fig = go.Figure()
