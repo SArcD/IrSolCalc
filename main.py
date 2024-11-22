@@ -452,86 +452,86 @@ with tab2:
         )
         st.plotly_chart(fig_total)
 
-    import math
-    import numpy as np
-    import pandas as pd
-    import plotly.express as px
-    import streamlit as st
+        import math
+        import numpy as np
+        import pandas as pd
+        import plotly.express as px
+        import streamlit as st
 
-    # Funciones necesarias
-    def calculate_declination(day_of_year):
-        """Calcula la declinación solar en función del día del año."""
-        return 23.45 * math.sin(math.radians((360 / 365) * (day_of_year - 81)))
+        # Funciones necesarias
+        def calculate_declination(day_of_year):
+            """Calcula la declinación solar en función del día del año."""
+            return 23.45 * math.sin(math.radians((360 / 365) * (day_of_year - 81)))
 
-    def calculate_equation_of_time(day_of_year):
-        """Calcula la ecuación del tiempo en minutos."""
-        B = math.radians((360 / 365) * (day_of_year - 81))
-        return 9.87 * math.sin(2 * B) - 7.53 * math.cos(B) - 1.5 * math.sin(B)
+        def calculate_equation_of_time(day_of_year):
+            """Calcula la ecuación del tiempo en minutos."""
+            B = math.radians((360 / 365) * (day_of_year - 81))
+            return 9.87 * math.sin(2 * B) - 7.53 * math.cos(B) - 1.5 * math.sin(B)
 
-    def calculate_hour_angle(hour, equation_of_time):
-        """Corrige el ángulo horario por la ecuación del tiempo."""
-        solar_time = hour + (equation_of_time / 60)
-        return 15 * (solar_time - 12)
+        def calculate_hour_angle(hour, equation_of_time):
+            """Corrige el ángulo horario por la ecuación del tiempo."""
+            solar_time = hour + (equation_of_time / 60)
+            return 15 * (solar_time - 12)
 
-    def calculate_solar_position(latitude, declination, hour_angle):
-        """Calcula la elevación solar (altitud) en grados."""
-        sin_altitude = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
+        def calculate_solar_position(latitude, declination, hour_angle):
+            """Calcula la elevación solar (altitud) en grados."""
+            sin_altitude = (math.sin(math.radians(latitude)) * math.sin(math.radians(declination)) +
                     math.cos(math.radians(latitude)) * math.cos(math.radians(declination)) * math.cos(math.radians(hour_angle)))
-        return math.degrees(math.asin(sin_altitude)) if sin_altitude > 0 else 0
+            return math.degrees(math.asin(sin_altitude)) if sin_altitude > 0 else 0
 
-    def calculate_radiation(altitude):
-        """Calcula la radiación solar total incidente en W/m²."""
-        S0 = 1361  # Constante solar (W/m²)
-        T_a = 0.75  # Transmisión atmosférica promedio
-        return S0 * T_a * math.sin(math.radians(altitude)) if altitude > 0 else 0
+        def calculate_radiation(altitude):
+            """Calcula la radiación solar total incidente en W/m²."""
+            S0 = 1361  # Constante solar (W/m²)
+            T_a = 0.75  # Transmisión atmosférica promedio
+            return S0 * T_a * math.sin(math.radians(altitude)) if altitude > 0 else 0
 
-    def generate_radiation_data(latitude, day_of_year):
-        """Genera los datos de radiación total para cada hora del día."""
-        hours_of_day = np.arange(0, 24, 0.5)  # Horas del día en intervalos de 0.5 horas
-        radiations = []
-        altitudes = []
+        def generate_radiation_data(latitude, day_of_year):
+            """Genera los datos de radiación total para cada hora del día."""
+            hours_of_day = np.arange(0, 24, 0.5)  # Horas del día en intervalos de 0.5 horas
+            radiations = []
+            altitudes = []
 
-        declination = calculate_declination(day_of_year)
-        eot = calculate_equation_of_time(day_of_year)  # Ecuación del tiempo
+            declination = calculate_declination(day_of_year)
+            eot = calculate_equation_of_time(day_of_year)  # Ecuación del tiempo
 
-        for hour in hours_of_day:
-            hour_angle = calculate_hour_angle(hour, eot)
-            altitude = calculate_solar_position(latitude, declination, hour_angle)
-            total_radiation = calculate_radiation(altitude)
+            for hour in hours_of_day:
+                hour_angle = calculate_hour_angle(hour, eot)
+                altitude = calculate_solar_position(latitude, declination, hour_angle)
+                total_radiation = calculate_radiation(altitude)
 
-            altitudes.append(altitude)
-            radiations.append(total_radiation)
+                altitudes.append(altitude)
+                radiations.append(total_radiation)
 
-        return pd.DataFrame({
-            "Hora del Día": hours_of_day,
-            "Altitud Solar (°)": altitudes,
-            "Radiación Total (W/m²)": radiations
-        })
+            return pd.DataFrame({
+                "Hora del Día": hours_of_day,
+                "Altitud Solar (°)": altitudes,
+                "Radiación Total (W/m²)": radiations
+            })
 
-    # Configuración de Streamlit
-    st.title("Variación de Radiación Total")
-    st.write("Explora la variación de la radiación solar total a lo largo de un día específico según la latitud y el día del año.")
+        # Configuración de Streamlit
+        st.title("Variación de Radiación Total")
+        st.write("Explora la variación de la radiación solar total a lo largo de un día específico según la latitud y el día del año.")
 
     #day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
 
     # Generar datos y gráfica
-    df = generate_radiation_data(latitude, day_of_year)
-    fig = px.line(
-        df,
-        x="Hora del Día",
-        y="Radiación Total (W/m²)",
-        title=f"Variación de Radiación Total para Latitud {latitude}° - Día del Año {day_of_year}",
-        labels={"Hora del Día": "Hora del Día", "Radiación Total (W/m²)": "Radiación Total (W/m²)"},
-    )
-    fig.update_layout(
-        xaxis_title="Hora del Día",
-        yaxis_title="Radiación Total (W/m²)",
-        height=600,
-        width=900
-    )
+        df = generate_radiation_data(latitude, day_of_year)
+        fig = px.line(
+            df,
+            x="Hora del Día",
+            y="Radiación Total (W/m²)",
+            title=f"Variación de Radiación Total para Latitud {latitude}° - Día del Año {day_of_year}",
+            labels={"Hora del Día": "Hora del Día", "Radiación Total (W/m²)": "Radiación Total (W/m²)"},
+        )
+        fig.update_layout(
+            xaxis_title="Hora del Día",
+            yaxis_title="Radiación Total (W/m²)",
+            height=600,
+            width=900
+        )
 
-    # Mostrar la gráfica
-    st.plotly_chart(fig)
+        # Mostrar la gráfica
+        st.plotly_chart(fig)
 
 
     
