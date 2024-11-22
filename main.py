@@ -184,12 +184,6 @@ with tab1:
         title="Vista del Observador: Movimiento del Sol"
     )
 
-    #directions = {
-    #    "Norte": (0, 1, 0),
-    #    "Este": (1, 0, 0),
-    #    "Sur": (0, -1, 0),
-    #    "Oeste": (-1, 0, 0)
-    #}
 
     directions = {
         "Norte": (0, 1, 0),   # Eje positivo en Y
