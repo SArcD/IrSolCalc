@@ -170,6 +170,27 @@ with tab1:
         title="Vista del Observador: Movimiento del Sol"
     )
 
+    # Agregar flechas y etiquetas de los puntos cardinales
+    directions = {
+        "Norte": (0, 0.5, 0),
+        "Este": (0.5, 0, 0),
+        "Sur": (0, -0.5, 0),
+        "Oeste": (-0.5, 0, 0)
+    }
+
+    for name, coord in directions.items():
+        fig.add_trace(go.Scatter3d(
+            x=[0, coord[0]],
+            y=[0, coord[1]],
+            z=[0, coord[2]],
+            mode="lines+text",
+            text=[None, name],
+            textposition="top center",
+            line=dict(color="red", width=4),
+            name=name
+        ))
+
+
     st.plotly_chart(fig)
 ##########################################################################33
 
