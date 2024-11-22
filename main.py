@@ -361,7 +361,7 @@ with tab2:
         return S0 * transmission_coefficient * sin_alpha
 
     radiation_power = calculate_solar_power(latitude, day_of_year, selected_hour, transmission_coefficient)
-    st.write(f"La potencia de radiación solar total recibida es de aproximadamente **{radiation_power:.2f} W/m², para el dia {day_of_the_year:2.f}**.")
+    st.write(f"La potencia de radiación solar total recibida es de aproximadamente **{radiation_power:.2f} W/m²- Día del Año {day_of_year}")
     st.write(f"La potencia de radiación solar UV recibida es de aproximadamente **{0.05*radiation_power:.2f} W/m²**.")
 
     import math
