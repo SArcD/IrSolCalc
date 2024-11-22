@@ -455,23 +455,7 @@ with tab2:
 
 
     
-    with tab2:
-        st.subheader("Radiación UV")
-        df_uv = generate_radiation_data(latitude, selected_hour, radiation_type="UV")
-        fig_uv = px.line(
-            df_uv,
-            x="Día del Año",
-            y="Radiación (W/m²)",
-            title=f"Variación de Radiación UV para Latitud {latitude}° - Hora Fija: {selected_hour}:00",
-            labels={"Día del Año": "Día del Año", "Radiación (W/m²)": "Radiación UV (W/m²)"},
-        )
-        fig_uv.update_layout(
-            xaxis_title="Día del Año",
-            yaxis_title="Radiación UV (W/m²)",
-            height=600,
-            width=900
-        )
-        st.plotly_chart(fig_uv)
+
 
     import math
     import numpy as np
@@ -541,11 +525,6 @@ with tab2:
     # Configuración de Streamlit
     st.title("Variación de Radiación UV")
     st.write("Explora la variación de la radiación Solar a lo largo de un día específico según la latitud y el día del año.")
-
-    # Inputs del usuario en la barra lateral
-    #st.sidebar.header("Parámetros de Entrada")
-    #latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
-    #day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
 
     # Generar datos y gráfica
     df = generate_uv_radiation_data(latitude, day_of_year)
