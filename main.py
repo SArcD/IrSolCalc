@@ -509,8 +509,8 @@ with tab2:
             })
 
         # Configuración de Streamlit
-        st.title("Variación de Radiación Total")
-        st.write("Explora la variación de la radiación solar total a lo largo de un día específico según la latitud y el día del año.")
+        #st.title("Variación de Radiación Total")
+        st.write("Gráfica de la variación annual de la radiación solar total según la latitud y el día del año.")
 
     #day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
 
