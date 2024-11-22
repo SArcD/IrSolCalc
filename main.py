@@ -670,44 +670,31 @@ with tab2:
                 "Radiación UV Diaria (Wh/m²)": daily_uv_radiations
             })
 
-## Configuración de Streamlit
-#st.title("Radiación UV Total Anual y Diaria")
-#st.sidebar.header("Parámetros de Entrada")
+        # Configuración de Streamlit
+        st.title("Variación de Radiación Total")
+        st.write("Explora la variación de la radiación solar total a lo largo de un día específico según la latitud y el día del año.")
 
-# Inputs del usuario en la barra lateral
-#latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
+    #day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
 
-        # Tabs para separar las visualizaciones
-        tab1, tab2 = st.tabs(["Radiación UV Total Anual", "Radiación UV Total Diaria"])
+    # Generar datos y gráfica
+        df = generate_radiation_data(latitude, day_of_year)
+        fig = px.line(
+            df,
+            x="Hora del Día",
+            y="Radiación UV (W/m²)",
+            title=f"Variación de Radiación UV para Latitud {latitude}° - Día del Año {day_of_year}",
+            labels={"Hora del Día": "Hora del Día", "Radiación UV (W/m²)": "Radiación UV (W/m²)"},
+        )
+        fig.update_layout(
+            xaxis_title="Hora del Día",
+            yaxis_title="Radiación UV (W/m²)",
+            height=600,
+            width=900
+        )
 
-        with tab1:
-            # Cálculo de radiación UV anual
-            st.subheader("Radiación UV Total Anual")
-            df_annual = calculate_annual_uv_radiation(latitude)
-            total_uv = df_annual["Radiación UV Diaria (Wh/m²)"].sum()
-            fig_annual = px.line(
-                df_annual,
-                x="Día del Año",
-                y="Radiación UV Diaria (Wh/m²)",
-                title=f"Radiación UV Total Recibida Durante el Año - Latitud {latitude}°",
-                labels={"Día del Año": "Día del Año", "Radiación UV Diaria (Wh/m²)": "Radiación UV Diaria (Wh/m²)"},
-            )
-            fig_annual.update_layout(
-                xaxis_title="Día del Año",
-                yaxis_title="Radiación UV Diaria (Wh/m²)",
-                height=600,
-                width=900
-            )
-            st.plotly_chart(fig_annual)
-            st.write(f"Radiación UV total anual: **{total_uv:.2f} Wh/m²**")
-
-        with tab2:
-            # Cálculo de radiación UV diaria
-            st.subheader("Radiación UV Total Diaria")
-            #day_of_year = st.sidebar.slider("Día del Año para Radiación Diaria", 1, 365, 172)
-            daily_uv = calculate_daily_uv_radiation(latitude, day_of_year)
-            st.write(f"Radiación UV total para el día seleccionado: **{daily_uv:.2f} Wh/m²**")
-
+        # Mostrar la gráfica
+        st.plotly_chart(fig)
+        
 
 
     
