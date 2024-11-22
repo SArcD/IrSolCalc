@@ -187,9 +187,9 @@ with tab1:
 
 
     directions = {
-        "Norte": (1, 0, 0),   # Eje positivo en Y
+        "Sur": (1, 0, 0),   # Eje positivo en Y
         "Este": (0, 1, 0),    # Eje positivo en X
-        "Sur": (-1, 0, 0),    # Eje negativo en Y
+        "Norte": (-1, 0, 0),    # Eje negativo en Y
         "Oeste": (0, -1, 0)   # Eje negativo en X
     }
 
