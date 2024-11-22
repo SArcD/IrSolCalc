@@ -35,7 +35,7 @@ def calculate_solar_position(latitude, declination, hour_angle):
     azimuth = math.degrees(math.acos(cos_azimuth)) if cos_azimuth <= 1 else 0
     if hour_angle > 0:
         azimuth = 360 - azimuth
-
+    
     return elevation, azimuth
 
 def generate_daily_solar_position(latitude, day_of_year):
@@ -192,12 +192,11 @@ with tab1:
     #}
 
     directions = {
-    "Norte": (1, 0, 0),   # Eje positivo en Y
-    "Este": (0, 1, 0),    # Eje positivo en X
-    "Sur": (-1, 0, 0),    # Eje negativo en Y
-    "Oeste": (0, -1, 0)   # Eje negativo en X
+        "Norte": (0, 1, 0),   # Eje positivo en Y
+        "Este": (1, 0, 0),    # Eje positivo en X
+        "Sur": (0, -1, 0),    # Eje negativo en Y
+        "Oeste": (-1, 0, 0)   # Eje negativo en X
     }
-
 
     for name, coord in directions.items():
         fig.add_trace(go.Scatter3d(
@@ -210,7 +209,6 @@ with tab1:
             line=dict(color="red", width=4),
             name=name
         ))
-
 
     st.plotly_chart(fig)
 ##########################################################################33
