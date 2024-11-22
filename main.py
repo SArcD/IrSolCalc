@@ -361,7 +361,8 @@ with tab2:
         return S0 * transmission_coefficient * sin_alpha
 
     radiation_power = calculate_solar_power(latitude, day_of_year, selected_hour, transmission_coefficient)
-    st.write(f"La potencia de radiación solar recibida es de aproximadamente **{radiation_power:.2f} W/m²**.")
+    st.write(f"La potencia de radiación solar total recibida es de aproximadamente **{radiation_power:.2f} W/m²**.")
+    st.write(f"La potencia de radiación solar UV recibida es de aproximadamente **{0.05*radiation_power:.2f} W/m²**.")
 
     import math
     import numpy as np
@@ -427,8 +428,8 @@ with tab2:
         return pd.DataFrame({"Día del Año": days_of_year, "Altitud Solar (°)": altitudes, "Radiación (W/m²)": radiations})
 
     # Configuración de Streamlit
-    st.title("Variación de Radiación Solar")
-    st.write("Explora cómo varía la radiación solar a lo largo del año según la latitud y la hora fija.")
+    #st.title("Variación de Radiación Solar")
+    #st.write("Explora cómo varía la radiación solar a lo largo del año según la latitud y la hora fija.")
 
 
     # Pestañas para elegir entre radiación total o UV
