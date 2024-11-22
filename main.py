@@ -681,7 +681,7 @@ with tab2:
         fig = px.line(
             df,
             x="Hora del Día",
-            y="Radiación UV (W/m²)",
+            y="Radiación (W/m²)",
             title=f"Variación de Radiación UV para Latitud {latitude}° - Día del Año {day_of_year}",
             labels={"Hora del Día": "Hora del Día", "Radiación UV (W/m²)": "Radiación UV (W/m²)"},
         )
