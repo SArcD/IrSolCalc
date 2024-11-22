@@ -512,7 +512,7 @@ with tab2:
     st.title("Variación de Radiación Total")
     st.write("Explora la variación de la radiación solar total a lo largo de un día específico según la latitud y el día del año.")
 
-    day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
+    #day_of_year = st.sidebar.slider("Día del Año", 1, 365, 172)
 
     # Generar datos y gráfica
     df = generate_radiation_data(latitude, day_of_year)
