@@ -430,10 +430,6 @@ with tab2:
     st.title("Variación de Radiación Solar")
     st.write("Explora cómo varía la radiación solar a lo largo del año según la latitud y la hora fija.")
 
-# Barra lateral para los inputs
-#st.sidebar.header("Parámetros de Entrada")
-#latitude = st.sidebar.slider("Latitud (°)", -90.0, 90.0, 19.43, step=0.1)
-#selected_hour = st.sidebar.slider("Hora Fija (24h)", 0.0, 24.0, 12.0, step=0.5)
 
     # Pestañas para elegir entre radiación total o UV
     tab1, tab2 = st.tabs(["Radiación Total", "Radiación UV"])
@@ -511,12 +507,12 @@ with tab2:
         return S0 * T_a * math.sin(math.radians(altitude)) if altitude > 0 else 0
 
     def calculate_uv_radiation(total_radiation):
-        """Calcula la fracción de radiación solar correspondiente a la luz UV."""
-        uv_fraction = 0.05  # 5% de la radiación total
+        """Calcula la radiación solar."""
+        uv_fraction = 1.00  # 5% de la radiación total
         return total_radiation * uv_fraction
 
     def generate_uv_radiation_data(latitude, day_of_year):
-        """Genera los datos de radiación UV para cada hora del día."""
+        """Genera los datos de radiación para cada hora del día."""
         hours_of_day = np.arange(0, 24, 0.5)  # Horas del día en intervalos de 0.5 horas
         radiations = []
         uv_radiations = []
@@ -544,7 +540,7 @@ with tab2:
 
     # Configuración de Streamlit
     st.title("Variación de Radiación UV")
-    st.write("Explora la variación de la radiación UV a lo largo de un día específico según la latitud y el día del año.")
+    st.write("Explora la variación de la radiación Solar a lo largo de un día específico según la latitud y el día del año.")
 
     # Inputs del usuario en la barra lateral
     #st.sidebar.header("Parámetros de Entrada")
@@ -556,13 +552,13 @@ with tab2:
     fig = px.line(
         df,
         x="Hora del Día",
-        y="Radiación UV (W/m²)",
-        title=f"Variación de Radiación UV para Latitud {latitude}° - Día del Año {day_of_year}",
-        labels={"Hora del Día": "Hora del Día", "Radiación UV (W/m²)": "Radiación UV (W/m²)"},
+        y="Radiación Solar (W/m²)",
+        title=f"Variación de Radiación Solar para Latitud {latitude}° - Día del Año {day_of_year}",
+        labels={"Hora del Día": "Hora del Día", "Radiación Solar (W/m²)": "Radiación Solar (W/m²)"},
     )
     fig.update_layout(
         xaxis_title="Hora del Día",
-        yaxis_title="Radiación UV (W/m²)",
+        yaxis_title="Radiación Solar (W/m²)",
         height=600,
         width=900
     )
