@@ -309,7 +309,7 @@ with tab1:
 
     # Media esfera
     fig.add_trace(go.Surface(
-        x=x, y=y, z=-z,
+        x=x, y=y, z=z,
         colorscale='Blues',
         opacity=0.3,
         name="Media Esfera Celeste",
