@@ -538,29 +538,29 @@ with tab2:
     with tab2:
 
         def generate_radiation_data(latitude, selected_hour, radiation_type="UV"):
-        """Genera los datos de radiación para cada día del año."""
-        days_of_year = np.arange(1, 366)  # Días del año
-        radiations = []
-        altitudes = []
+            """Genera los datos de radiación para cada día del año."""
+            days_of_year = np.arange(1, 366)  # Días del año
+            radiations = []
+            altitudes = []
 
-        for day in days_of_year:
-            declination = calculate_declination(day)
-            eot = calculate_equation_of_time(day)  # Ecuación del tiempo
-            hour_angle = calculate_hour_angle(selected_hour, eot)
-            altitude = calculate_solar_position(latitude, declination, hour_angle)
-            total_radiation = calculate_radiation(altitude)
+            for day in days_of_year:
+                declination = calculate_declination(day)
+                eot = calculate_equation_of_time(day)  # Ecuación del tiempo
+                hour_angle = calculate_hour_angle(selected_hour, eot)
+                altitude = calculate_solar_position(latitude, declination, hour_angle)
+                total_radiation = calculate_radiation(altitude)
 
-            if radiation_type == "Total":
-                radiation = total_radiation
-            elif radiation_type == "UV":
-                radiation = calculate_uv_radiation(total_radiation)
-            else:
-                radiation = 0  # Default case
+                if radiation_type == "Total":
+                    radiation = total_radiation
+                elif radiation_type == "UV":
+                    radiation = calculate_uv_radiation(total_radiation)
+                else:
+                    radiation = 0  # Default case
 
-            altitudes.append(altitude)
-            radiations.append(radiation)
+                altitudes.append(altitude)
+                radiations.append(radiation)
 
-        return pd.DataFrame({"Día del Año": days_of_year, "Altitud Solar (°)": altitudes, "Radiación (W/m²)": radiations})
+            return pd.DataFrame({"Día del Año": days_of_year, "Altitud Solar (°)": altitudes, "Radiación (W/m²)": radiations})
 
 
 
