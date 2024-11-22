@@ -185,11 +185,13 @@ with tab1:
     )
 
     directions = {
-    "Norte": (0, -1, 0),   # Norte en el eje negativo Y
-    "Este": (1, 0, 0),     # Este en el eje positivo X
-    "Sur": (0, 1, 0),      # Sur en el eje positivo Y
-    "Oeste": (-1, 0, 0)    # Oeste en el eje negativo X
+    "Norte": (-1, 0, 0),   # Norte en el eje negativo Y
+    "Este": (0, 1, 0),     # Este en el eje positivo X
+    "Sur": (1, 0, 0),      # Sur en el eje positivo Y
+    "Oeste": (0, -1, 0)    # Oeste en el eje negativo X
     }
+
+
 
 
     for name, coord in directions.items():
@@ -399,8 +401,9 @@ with tab1:
     #"Oeste": (-1, 0, 0)   # Oeste en el eje negativo X
     #}
 
+
     directions = {
-    "Norte": (1, 0, 0),   # Norte en el eje negativo Y
+    "Norte": (-1, 0, 0),   # Norte en el eje negativo Y
     "Este": (0, 1, 0),     # Este en el eje positivo X
     "Sur": (1, 0, 0),      # Sur en el eje positivo Y
     "Oeste": (0, -1, 0)    # Oeste en el eje negativo X
