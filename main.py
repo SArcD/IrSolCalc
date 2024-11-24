@@ -855,6 +855,12 @@ with tab2:
         import geopandas as gpd
         import numpy as np
 
+        import folium
+        import streamlit as st
+        from streamlit_folium import st_folium
+        import numpy as np
+        import math
+
         # Función para calcular radiación solar incidente
         def calculate_annual_radiation(latitude):
             """Calcula la radiación solar anual promedio basada en la latitud."""
@@ -863,52 +869,42 @@ with tab2:
             radiation = S0 * T_a * math.cos(math.radians(latitude))
             return max(0, radiation)  # Evitar valores negativos
 
-        # Configuración de Streamlit
-        st.title("Mapa de Radiación Solar en México")
-        st.sidebar.header("Configuración")
+        # Crear una cuadrícula de puntos para todo México
+        latitudes = np.linspace(14.5, 32.7, 50)  # Latitud aproximada de México
+        longitudes = np.linspace(-118.0, -86.7, 50)  # Longitud aproximada de México
+        grid = [{"lat": lat, "lon": lon, "radiation": calculate_annual_radiation(lat)} 
+                for lat in latitudes for lon in longitudes]
 
-        # Cargar GeoJSON de divisiones de México
-        geojson_url = "https://raw.githubusercontent.com/PhantomInsights/mexico-geojson/main/mexico_states.geojson"
-        try:
-            gdf_mexico = gpd.read_file(geojson_url)
-        except Exception as e:
-            st.error(f"No se pudo cargar el archivo GeoJSON: {e}")
-            st.stop()
-
-        # Calcular radiación para cada estado
-        gdf_mexico["Radiación Anual"] = gdf_mexico["geometry"].centroid.y.apply(calculate_annual_radiation)
-
-        # Crear el mapa
+        # Crear el mapa centrado en México
         mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
 
-        # Crear una capa de color basada en la radiación anual
-        folium.Choropleth(
-            geo_data=gdf_mexico,
-            name="Radiación Solar Anual",
-            data=gdf_mexico,
-            columns=["name", "Radiación Anual"],
-            key_on="feature.properties.name",
-            fill_color="YlOrRd",  # Escala de color detallada
-            fill_opacity=0.8,
-            line_opacity=0.2,
-            legend_name="Radiación Solar Anual (W/m²)"
-        ).add_to(mapa)
-
-        # Opcional: Agregar marcadores en los centroides con el valor de radiación
-        for _, row in gdf_mexico.iterrows():
-            folium.Marker(
-                location=[row["geometry"].centroid.y, row["geometry"].centroid.x],
-                popup=f"{row['name']}: {row['Radiación Anual']:.2f} W/m²",
-                icon=folium.Icon(color="blue", icon="info-sign")
+        # Agregar círculos coloreados según la radiación
+        for point in grid:
+            color = (
+                "green" if point["radiation"] < 800 else
+                "yellow" if point["radiation"] < 1000 else
+                "red"
+            )
+            folium.CircleMarker(
+                location=[point["lat"], point["lon"]],
+                radius=3,  # Radio más pequeño para visualizar mejor la cuadrícula
+                color=color,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.6,
+                popup=f"Radiación: {point['radiation']:.2f} W/m²"
             ).add_to(mapa)
-    
+
         # Mostrar el mapa en Streamlit
-        st.write("""    
-        Este mapa muestra la radiación solar anual estimada en cada estado de México.
-        El cálculo se basa en la latitud del centroide de cada estado y utiliza una aproximación simplificada.
+        st.title("Mapa de Radiación Solar en Todo México")
+        st.write("""
+        Este mapa muestra la radiación solar incidente aproximada en todo México usando una cuadrícula de puntos.
+        La intensidad del color indica la magnitud de la radiación:
+        - **Verde:** Baja (<800 W/m²)
+        - **Amarillo:** Moderada (800-1000 W/m²)
+        - **Rojo:** Alta (>1000 W/m²)
         """)
         st_folium(mapa, width=800, height=600)
-
 
     
 
