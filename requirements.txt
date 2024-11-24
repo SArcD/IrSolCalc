@@ -22,3 +22,8 @@ pingouin
 skope-rules
 plotly
 pillow
+folium
+PyGithub
+streamlit-leaflet
+streamlit-folium
+geopy
