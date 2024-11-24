@@ -921,6 +921,54 @@ with tab2:
         st_folium(mapa, width=800, height=600)
 
 
+        # Verificar valores calculados de radiación para diferentes ciudades
+        import numpy as np
+        import pandas as pd
+
+        # Parámetros de la fórmula
+        S0 = 1361  # Constante solar (W/m²)
+        Ta = 0.75  # Transmisión atmosférica promedio
+        k = 0.12   # Incremento de radiación por km de altitud
+
+        # Altitudes promedio estimadas por estado (en kilómetros)
+        altitudes = {
+            "Aguascalientes": 1.88, "Baja California": 0.58, "Baja California Sur": 0.40,
+            "Campeche": 0.10, "Chiapas": 0.72, "Chihuahua": 1.49, "Ciudad de México": 2.24,
+            "Coahuila": 1.12, "Colima": 0.33, "Durango": 1.88, "Guanajuato": 1.96,
+            "Guerrero": 0.60, "Hidalgo": 1.90, "Jalisco": 1.56, "Estado de México": 2.57,
+            "Michoacán": 1.75, "Morelos": 1.66, "Nayarit": 0.70, "Nuevo León": 1.57,
+            "Oaxaca": 1.55, "Puebla": 2.13, "Querétaro": 1.82, "Quintana Roo": 0.10,
+            "San Luis Potosí": 1.86, "Sinaloa": 0.38, "Sonora": 0.61, "Tabasco": 0.10,
+            "Tamaulipas": 0.25, "Tlaxcala": 2.24, "Veracruz": 0.90, "Yucatán": 0.12, "Zacatecas": 2.19
+        }
+
+        # Latitudes aproximadas de las ciudades correspondientes
+        latitudes = {
+            "Aguascalientes": 21.88, "Baja California": 30.33, "Baja California Sur": 24.14,
+            "Campeche": 19.83, "Chiapas": 16.75, "Chihuahua": 28.63, "Ciudad de México": 19.43,
+            "Coahuila": 27.25, "Colima": 19.12, "Durango": 24.02, "Guanajuato": 21.02,
+            "Guerrero": 17.57, "Hidalgo": 20.48, "Jalisco": 20.67, "Estado de México": 19.33,
+            "Michoacán": 19.70, "Morelos": 18.93, "Nayarit": 21.50, "Nuevo León": 25.67,
+            "Oaxaca": 17.07, "Puebla": 19.05, "Querétaro": 20.59, "Quintana Roo": 19.18,
+            "San Luis Potosí": 22.15, "Sinaloa": 25.79, "Sonora": 29.15, "Tabasco": 17.99,
+            "Tamaulipas": 23.74, "Tlaxcala": 19.32, "Veracruz": 19.18, "Yucatán": 20.97, "Zacatecas": 22.77
+        }
+
+        # Función para calcular la radiación solar
+        def calculate_radiation(latitude, altitude):
+            radiation = S0 * Ta * np.cos(np.radians(latitude)) * (1 + k * altitude)
+            return max(0, radiation)  # Asegurarnos de que no haya valores negativos
+
+        # Calcular radiación para todas las ciudades
+        results = []
+        for city, lat in latitudes.items():
+            altitude = altitudes.get(city, 0)
+            radiation = calculate_radiation(lat, altitude)
+            results.append({"Ciudad": city, "Latitud (°)": lat, "Altitud (km)": altitude, "Radiación (W/m²)": radiation})
+
+        # Crear un DataFrame con los resultados
+        df_results = pd.DataFrame(results)
+        df_results_sorted = df_results.sort_values(by="Radiación (W/m²)")
 
 
     
