@@ -969,7 +969,7 @@ with tab2:
         # Crear un DataFrame con los resultados
         df_results = pd.DataFrame(results)
         df_results_sorted = df_results.sort_values(by="Radiación (W/m²)")
-        df_results
+        df_results_sorted
 
 
     
