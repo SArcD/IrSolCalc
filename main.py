@@ -854,26 +854,50 @@ with tab2:
         import math
         import geopandas as gpd
         import numpy as np
-
         import folium
+        import streamlit as st
+        from streamlit_folium import st_folium
         import numpy as np
         import math
 
         # Función para calcular radiación solar incidente
         def calculate_radiation(latitude, climate_factor=1.0):
+            """Calcula la radiación solar incidente ajustada por el clima."""
             S0 = 1361  # Constante solar en W/m²
             T_a = 0.75  # Transmisión atmosférica promedio
             radiation = S0 * T_a * math.cos(math.radians(latitude))
             return max(0, radiation * climate_factor)  # Ajustar por el factor climático
+    
+        # Función para excluir puntos sobre el mar
+        def is_land(lat, lon):
+            """Devuelve True si el punto está dentro de México continental aproximado."""
+            # Excluir puntos en el Golfo de México
+            if (lat > 21 and lon < -97) or (lat < 19 and lon > -90):
+                return False
+            # Excluir puntos en el Océano Pacífico
+            if (lat < 25 and lon < -114):
+                return False
+            # Excluir puntos fuera del rango territorial de México
+            if lon < -118 or lon > -86.7 or lat < 14.5 or lat > 32.7:
+                return False
+            return True
 
-        # Crear una cuadrícula de puntos para México
-        latitudes = np.linspace(14.5, 32.7, 50)
-        longitudes = np.linspace(-118.0, -86.7, 50)
+        # Configuración de Streamlit
+        st.title("Simulación de Radiación Solar en México")
+        st.sidebar.header("Configuración")
+
+        # Parámetros de la cuadrícula
+        density = st.sidebar.slider("Densidad de la cuadrícula", 10, 100, 50)
+        latitudes = np.linspace(14.5, 32.7, density)  # Latitudes de México
+        longitudes = np.linspace(-118.0, -86.7, density)  # Longitudes de México
+
+        # Generar datos de la cuadrícula excluyendo puntos sobre el mar
         grid = []
-
-        # Asignar un factor climático aproximado por latitud
         for lat in latitudes:
             for lon in longitudes:
+                if not is_land(lat, lon):
+                    continue  # Excluir puntos sobre el mar
+                # Ajustar el factor climático según la latitud
                 if lat > 28:  # Zonas áridas del norte
                     climate_factor = 1.0
                 elif lat > 22:  # Altiplano
@@ -881,19 +905,21 @@ with tab2:
                 else:  # Climas tropicales húmedos
                     climate_factor = 0.8
         
+                # Calcular radiación y agregar al grid
                 grid.append({
                     "lat": lat,
                     "lon": lon,
                     "radiation": calculate_radiation(lat, climate_factor)
                 })
 
-        # Crear el mapa
+        # Crear el mapa en Folium
         mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
         for point in grid:
+            # Determinar color basado en la radiación
             color = "green" if point["radiation"] < 800 else "yellow" if point["radiation"] < 1000 else "red"
             folium.CircleMarker(
                 location=[point["lat"], point["lon"]],
-                radius=3,
+                radius=3,  # Radio pequeño para representar la cuadrícula
                 color=color,
                 fill=True,
                 fill_color=color,
@@ -901,8 +927,16 @@ with tab2:
                 popup=f"Radiación: {point['radiation']:.2f} W/m²"
             ).add_to(mapa)
 
-        # Mostrar el mapa
-        mapa.save("mapa_radiacion.html")
+        # Mostrar el mapa en Streamlit
+        st.write("""
+        Este mapa simula la radiación solar incidente en México considerando únicamente puntos terrestres.
+        Los colores indican la intensidad de la radiación:
+        - **Verde**: Baja (<800 W/m²)
+        - **Amarillo**: Moderada (800-1000 W/m²)
+        - **Rojo**: Alta (>1000 W/m²)
+        """)
+        st_folium(mapa, width=800, height=600)
+
 
     
 
