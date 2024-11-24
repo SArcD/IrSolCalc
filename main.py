@@ -800,39 +800,46 @@ with tab2:
         # Mostrar la gráfica
         st.plotly_chart(fig)
 
+        import folium
         import streamlit as st
-        import plotly.express as px
+        from streamlit_folium import st_folium
 
-        # Configuración de la aplicación Streamlit
-        st.title("Visualización Interactiva del Mapa de México")
-        st.sidebar.header("Opciones del Mapa")
+        # Título de la aplicación
+        st.title("Mapa Interactivo de México con Folium")
+        st.sidebar.header("Parámetros del Mapa")
 
-        # Mensaje introductorio
-        st.write("""
-        Este mapa muestra las divisiones geográficas de México. 
-        Puedes explorar y personalizar la visualización.
-        """)
+        # Parámetros del mapa
+        latitude = st.sidebar.slider("Latitud inicial", -90.0, 90.0, 23.6345)
+        longitude = st.sidebar.slider("Longitud inicial", -180.0, 180.0, -102.5528)
+        zoom_level = st.sidebar.slider("Nivel de zoom", 1, 18, 5)
 
-        # Crear un mapa de México utilizando Plotly
-        fig = px.choropleth(
-        locations=["Mexico"],  # País a visualizar
-        locationmode="country names",  # Modo de ubicación por nombres de países
-        title="Mapa de México",
-        )
+        # Crear el mapa centrado en la ubicación seleccionada
+        mapa_mexico = folium.Map(location=[latitude, longitude], zoom_start=zoom_level)
 
-        # Personalizar el mapa
-        fig.update_geos(
-        visible=True,
-            resolution=50,
-            showcountries=True,
-            countrycolor="Black",
-            landcolor="lightblue",
-            showocean=True,
-            oceancolor="lightcyan"
-        )
+        # Agregar un marcador en Ciudad de México
+        folium.Marker(
+            location=[19.4326, -99.1332],
+            popup="Ciudad de México",
+            icon=folium.Icon(color="blue")
+        ).add_to(mapa_mexico)
+
+        # Agregar un marcador en Guadalajara
+        folium.Marker(
+            location=[20.6597, -103.3496],
+            popup="Guadalajara",
+            icon=folium.Icon(color="green")
+        ).add_to(mapa_mexico)
+
+        # Agregar un marcador en Monterrey
+        folium.Marker(
+            location=[25.6866, -100.3161],
+            popup="Monterrey",
+            icon=folium.Icon(color="red")
+        ).add_to(mapa_mexico)
 
         # Mostrar el mapa en Streamlit
-        st.plotly_chart(fig)
+        st_folium(mapa_mexico, width=800, height=500)
+
 
 
 
