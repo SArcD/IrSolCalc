@@ -859,83 +859,77 @@ with tab2:
         from streamlit_folium import st_folium
         import numpy as np
         import math
+        import folium
+        import geopandas as gpd
+        import streamlit as st
+        from streamlit_folium import st_folium
+        import numpy as np
 
-        # Función para calcular radiación solar incidente
-        def calculate_radiation(latitude, climate_factor=1.0):
-            """Calcula la radiación solar incidente ajustada por el clima."""
-            S0 = 1361  # Constante solar en W/m²
-            T_a = 0.75  # Transmisión atmosférica promedio
-            radiation = S0 * T_a * math.cos(math.radians(latitude))
-            return max(0, radiation * climate_factor)  # Ajustar por el factor climático
-    
-        # Función para excluir puntos sobre el mar
-        def is_land(lat, lon):
-            """Devuelve True si el punto está dentro de México continental aproximado."""
-            # Excluir puntos en el Golfo de México
-            if (lat > 21 and lon < -97) or (lat < 19 and lon > -90):
-                return False
-            # Excluir puntos en el Océano Pacífico
-            if (lat < 25 and lon < -114):
-                return False
-            # Excluir puntos fuera del rango territorial de México
-            if lon < -118 or lon > -86.7 or lat < 14.5 or lat > 32.7:
-                return False
-            return True
+        # Parámetros de la fórmula
+        S0 = 1361  # Constante solar (W/m²)
+        Ta = 0.75  # Transmisión atmosférica promedio
+        k = 0.12   # Incremento de radiación por km de altitud
 
-        # Configuración de Streamlit
-        st.title("Simulación de Radiación Solar en México")
-        st.sidebar.header("Configuración")
+        # Altitudes promedio estimadas por estado (en kilómetros)
+        altitudes = {
+            "Aguascalientes": 1.88, "Baja California": 0.58, "Baja California Sur": 0.40,
+            "Campeche": 0.10, "Chiapas": 0.72, "Chihuahua": 1.49, "Ciudad de México": 2.24,
+            "Coahuila": 1.12, "Colima": 0.33, "Durango": 1.88, "Guanajuato": 1.96,
+            "Guerrero": 0.60, "Hidalgo": 1.90, "Jalisco": 1.56, "Estado de México": 2.57,
+            "Michoacán": 1.75, "Morelos": 1.66, "Nayarit": 0.70, "Nuevo León": 1.57,
+            "Oaxaca": 1.55, "Puebla": 2.13, "Querétaro": 1.82, "Quintana Roo": 0.10,
+            "San Luis Potosí": 1.86, "Sinaloa": 0.38, "Sonora": 0.61, "Tabasco": 0.10,
+            "Tamaulipas": 0.25, "Tlaxcala": 2.24, "Veracruz": 0.90, "Yucatán": 0.12, "Zacatecas": 2.19
+        }
 
-        # Parámetros de la cuadrícula
-        density = st.sidebar.slider("Densidad de la cuadrícula", 10, 100, 50)
-        latitudes = np.linspace(14.5, 32.7, density)  # Latitudes de México
-        longitudes = np.linspace(-118.0, -86.7, density)  # Longitudes de México
+        def calculate_radiation(latitude, altitude):
+            """
+            Calcula la radiación solar incidente en función de la latitud y altitud.
+            """
+            radiation = S0 * Ta * np.cos(np.radians(latitude)) * (1 + k * altitude)
+            return max(0, radiation)  # Asegurarnos de que no haya valores negativos
 
-        # Generar datos de la cuadrícula excluyendo puntos sobre el mar
-        grid = []
-        for lat in latitudes:
-            for lon in longitudes:
-                if not is_land(lat, lon):
-                    continue  # Excluir puntos sobre el mar
-                # Ajustar el factor climático según la latitud
-                if lat > 28:  # Zonas áridas del norte
-                    climate_factor = 1.0
-                elif lat > 22:  # Altiplano
-                    climate_factor = 0.9
-                else:  # Climas tropicales húmedos
-                    climate_factor = 0.8
-        
-                # Calcular radiación y agregar al grid
-                grid.append({
-                    "lat": lat,
-                    "lon": lon,
-                    "radiation": calculate_radiation(lat, climate_factor)
-                })
+        # Cargar el archivo GeoJSON    
+        geojson_file = "mexicoHigh.json"
 
-        # Crear el mapa en Folium
+        try:
+            gdf = gpd.read_file(geojson_file)
+        except Exception as e:
+            st.error(f"No se pudo cargar el archivo GeoJSON: {e}")
+            st.stop()
+
+        # Agregar el campo de altitud al GeoDataFrame    
+        gdf["Altitud"] = gdf["name"].map(altitudes)
+
+        # Calcular la radiación para cada estado
+        gdf["Radiación"] = gdf.apply(
+            lambda row: calculate_radiation(row.geometry.centroid.y, row["Altitud"]), axis=1
+        )
+
+        # Crear el mapa centrado en México
         mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
-        for point in grid:
-            # Determinar color basado en la radiación
-            color = "green" if point["radiation"] < 800 else "yellow" if point["radiation"] < 1000 else "red"
-            folium.CircleMarker(
-                location=[point["lat"], point["lon"]],
-                radius=3,  # Radio pequeño para representar la cuadrícula
-                color=color,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.6,
-                popup=f"Radiación: {point['radiation']:.2f} W/m²"
-            ).add_to(mapa)
+
+        # Agregar una capa de color basada en la radiación
+        folium.Choropleth(
+            geo_data=gdf,
+            name="Radiación Solar",
+            data=gdf,
+            columns=["name", "Radiación"],
+            key_on="feature.properties.name",
+            fill_color="YlOrRd",
+            fill_opacity=0.7,
+            line_opacity=0.2,
+            legend_name="Radiación Solar (W/m²)"
+        ).add_to(mapa)
 
         # Mostrar el mapa en Streamlit
+        st.title("Mapa de Radiación Solar en México")
         st.write("""
-        Este mapa simula la radiación solar incidente en México considerando únicamente puntos terrestres.
-        Los colores indican la intensidad de la radiación:
-        - **Verde**: Baja (<800 W/m²)
-        - **Amarillo**: Moderada (800-1000 W/m²)
-        - **Rojo**: Alta (>1000 W/m²)
+        Este mapa muestra la radiación solar incidente estimada para cada estado de México,
+        considerando factores como la latitud y una altitud promedio asignada manualmente por estado.
         """)
         st_folium(mapa, width=800, height=600)
+
 
 
     
