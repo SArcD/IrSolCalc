@@ -800,22 +800,39 @@ with tab2:
         # Mostrar la gráfica
         st.plotly_chart(fig)
 
+        import streamlit as st
         import plotly.express as px
 
-        # Crear un mapa de México utilizando Plotly y sus datos geográficos integrados
-        fig = px.choropleth(locations=["Mexico"],  # País a visualizar
-                    locationmode="country names",  # Modo de ubicación por nombres de países
-                    color=["lightblue"],  # Color del mapa
-                    title="Mapa de México")
+        # Configuración de la aplicación Streamlit
+        st.title("Visualización Interactiva del Mapa de México")
+        st.sidebar.header("Opciones del Mapa")
 
-        # Mostrar el mapa
+        # Mensaje introductorio
+        st.write("""
+        Este mapa muestra las divisiones geográficas de México. 
+        Puedes explorar y personalizar la visualización.
+        """)
+
+        # Crear un mapa de México utilizando Plotly
+        fig = px.choropleth(
+        locations=["Mexico"],  # País a visualizar
+        locationmode="country names",  # Modo de ubicación por nombres de países
+        title="Mapa de México",
+        )
+
+        # Personalizar el mapa
         fig.update_geos(
-            visible=True,
+        visible=True,
             resolution=50,
             showcountries=True,
-            countrycolor="Black"
+            countrycolor="Black",
+            landcolor="lightblue",
+            showocean=True,
+            oceancolor="lightcyan"
         )
-        fig.show()
+
+        # Mostrar el mapa en Streamlit
+        st.plotly_chart(fig)
 
 
 
