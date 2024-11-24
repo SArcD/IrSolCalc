@@ -27,3 +27,4 @@ PyGithub
 streamlit-leaflet
 streamlit-folium
 geopy
+geopandas
