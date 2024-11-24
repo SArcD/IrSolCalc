@@ -905,7 +905,7 @@ with tab2:
             data=gdf,
             columns=["name", "Radiación"],
             key_on="feature.properties.name",
-            fill_color="YlOrRd",  # Cambia a "RdYlBu" si lo deseas
+            fill_color="RdYlBu",  # Cambia a "RdYlBu" si lo deseas
             fill_opacity=0.7,
             line_opacity=0.2,
             legend_name="Radiación Solar (W/m²)"
