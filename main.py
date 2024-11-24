@@ -800,6 +800,24 @@ with tab2:
         # Mostrar la gráfica
         st.plotly_chart(fig)
 
+    import plotly.express as px
+
+    # Crear un mapa de México utilizando Plotly y sus datos geográficos integrados
+    fig = px.choropleth(locations=["Mexico"],  # País a visualizar
+                    locationmode="country names",  # Modo de ubicación por nombres de países
+                    color=["lightblue"],  # Color del mapa
+                    title="Mapa de México")
+
+    # Mostrar el mapa
+    fig.update_geos(
+        visible=True,
+        resolution=50,
+        showcountries=True,
+        countrycolor="Black"
+    )
+    fig.show()
+
+
 
     
 
