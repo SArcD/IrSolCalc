@@ -893,8 +893,9 @@ with tab2:
             return total_radiation / 365  # Promedio anual
 
         # Cargar el archivo GeoJSON
-        geojson_file = "mexicoHigh.json"
-
+        #geojson_file = "mexicoHigh.json"
+        geojson_file = "mx.json"
+        
         try:
             gdf = gpd.read_file(geojson_file)
         except Exception as e:
