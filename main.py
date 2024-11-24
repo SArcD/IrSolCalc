@@ -841,6 +841,59 @@ with tab2:
         st_folium(mapa_mexico, width=800, height=500)
 
 
+        import folium
+        import streamlit as st
+        from streamlit_folium import st_folium
+        import math
+        import geopandas as gpd
+        import numpy as np
+
+        # Función para calcular radiación solar incidente
+        def calculate_annual_radiation(latitude):
+            """Calcula la radiación solar anual promedio basada en la latitud."""
+            S0 = 1361  # Constante solar en W/m²
+            T_a = 0.75  # Transmisión atmosférica promedio
+            radiation = S0 * T_a * math.cos(math.radians(latitude))
+            return max(0, radiation)  # Evitar valores negativos
+
+        # Configuración de Streamlit
+        st.title("Mapa de Radiación Solar en México")
+        st.sidebar.header("Configuración")
+
+        # Cargar GeoJSON del mapa de México
+        geojson_url = "https://raw.githubusercontent.com/PhantomInsights/mexico-geojson/main/mexico_states.geojson"
+        gdf_mexico = gpd.read_file(geojson_url)
+
+        # Calcular la radiación para cada estado
+        gdf_mexico["Radiación Anual"] = gdf_mexico["geometry"].centroid.y.apply(calculate_annual_radiation)
+
+        # Crear el mapa
+        mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
+
+        # Crear una capa de color basada en la radiación anual
+        folium.Choropleth(
+            geo_data=gdf_mexico,
+            name="Radiación Solar Anual",
+            data=gdf_mexico,
+            columns=["name", "Radiación Anual"],
+            key_on="feature.properties.name",
+            fill_color="YlOrRd",
+            fill_opacity=0.7,
+            line_opacity=0.2,
+            legend_name="Radiación Solar Anual (W/m²)"
+        ).add_to(mapa)
+
+        # Agregar marcadores opcionales    
+        folium.Marker(
+            location=[19.4326, -99.1332],
+            popup="Ciudad de México",
+            icon=folium.Icon(color="blue")
+        ).add_to(mapa)
+
+        # Mostrar el mapa en Streamlit
+        st_folium(mapa, width=800, height=600)
+
+
 
 
     
