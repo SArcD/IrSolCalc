@@ -856,38 +856,44 @@ with tab2:
         import numpy as np
 
         import folium
-        import streamlit as st
-        from streamlit_folium import st_folium
         import numpy as np
         import math
 
         # Función para calcular radiación solar incidente
-        def calculate_annual_radiation(latitude):
-            """Calcula la radiación solar anual promedio basada en la latitud."""
+        def calculate_radiation(latitude, climate_factor=1.0):
             S0 = 1361  # Constante solar en W/m²
             T_a = 0.75  # Transmisión atmosférica promedio
             radiation = S0 * T_a * math.cos(math.radians(latitude))
-            return max(0, radiation)  # Evitar valores negativos
+            return max(0, radiation * climate_factor)  # Ajustar por el factor climático
 
-        # Crear una cuadrícula de puntos para todo México
-        latitudes = np.linspace(14.5, 32.7, 50)  # Latitud aproximada de México
-        longitudes = np.linspace(-118.0, -86.7, 50)  # Longitud aproximada de México
-        grid = [{"lat": lat, "lon": lon, "radiation": calculate_annual_radiation(lat)} 
-                for lat in latitudes for lon in longitudes]
+        # Crear una cuadrícula de puntos para México
+        latitudes = np.linspace(14.5, 32.7, 50)
+        longitudes = np.linspace(-118.0, -86.7, 50)
+        grid = []
 
-        # Crear el mapa centrado en México
+        # Asignar un factor climático aproximado por latitud
+        for lat in latitudes:
+            for lon in longitudes:
+                if lat > 28:  # Zonas áridas del norte
+                    climate_factor = 1.0
+                elif lat > 22:  # Altiplano
+                    climate_factor = 0.9
+                else:  # Climas tropicales húmedos
+                    climate_factor = 0.8
+        
+                grid.append({
+                    "lat": lat,
+                    "lon": lon,
+                    "radiation": calculate_radiation(lat, climate_factor)
+                })
+
+        # Crear el mapa
         mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
-
-        # Agregar círculos coloreados según la radiación
         for point in grid:
-            color = (
-                "green" if point["radiation"] < 800 else
-                "yellow" if point["radiation"] < 1000 else
-                "red"
-            )
+            color = "green" if point["radiation"] < 800 else "yellow" if point["radiation"] < 1000 else "red"
             folium.CircleMarker(
                 location=[point["lat"], point["lon"]],
-                radius=3,  # Radio más pequeño para visualizar mejor la cuadrícula
+                radius=3,
                 color=color,
                 fill=True,
                 fill_color=color,
@@ -895,16 +901,8 @@ with tab2:
                 popup=f"Radiación: {point['radiation']:.2f} W/m²"
             ).add_to(mapa)
 
-        # Mostrar el mapa en Streamlit
-        st.title("Mapa de Radiación Solar en Todo México")
-        st.write("""
-        Este mapa muestra la radiación solar incidente aproximada en todo México usando una cuadrícula de puntos.
-        La intensidad del color indica la magnitud de la radiación:
-        - **Verde:** Baja (<800 W/m²)
-        - **Amarillo:** Moderada (800-1000 W/m²)
-        - **Rojo:** Alta (>1000 W/m²)
-        """)
-        st_folium(mapa, width=800, height=600)
+        # Mostrar el mapa
+        mapa.save("mapa_radiacion.html")
 
     
 
