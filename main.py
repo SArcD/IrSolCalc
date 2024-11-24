@@ -854,9 +854,15 @@ with tab2:
         from streamlit_folium import st_folium
         import numpy as np
 
-        # Parámetros de la fórmula
+        import folium
+        import geopandas as gpd
+        import streamlit as st
+        from streamlit_folium import st_folium
+        import numpy as np
+
+        # Parámetros de la fórmula    
         S0 = 1361  # Constante solar (W/m²)
-        Ta = 0.75  # Transmisión atmosférica promedio
+        Ta = 0.75  # Transmisión atmosférica promedio    
         k = 0.12   # Incremento de radiación por km de altitud
 
         # Altitudes promedio estimadas por estado (en kilómetros)
@@ -871,12 +877,20 @@ with tab2:
             "Tamaulipas": 0.25, "Tlaxcala": 2.24, "Veracruz": 0.90, "Yucatán": 0.12, "Zacatecas": 2.19
         }
 
-        def calculate_radiation(latitude, altitude):
-            """
-            Calcula la radiación solar incidente en función de la latitud y altitud.
-            """
-            radiation = S0 * Ta * np.cos(np.radians(latitude)) * (1 + k * altitude)
-            return max(0, radiation)  # Asegurarnos de que no haya valores negativos
+        # Función para calcular declinación solar
+        def calculate_declination(day_of_year):
+            return 23.45 * np.sin(np.radians((360 / 365) * (day_of_year - 81)))
+
+        # Función para calcular la radiación promedio anual
+        def calculate_annual_radiation(latitude, altitude):
+            total_radiation = 0
+            for day in range(1, 366):
+                declination = calculate_declination(day)
+                sin_lat_decl = np.sin(np.radians(latitude)) * np.sin(np.radians(declination))
+                cos_lat_decl = np.cos(np.radians(latitude)) * np.cos(np.radians(declination))
+                daily_radiation = S0 * Ta * (sin_lat_decl + cos_lat_decl) * (1 + k * altitude)
+                total_radiation += max(0, daily_radiation)
+            return total_radiation / 365  # Promedio anual
 
         # Cargar el archivo GeoJSON
         geojson_file = "mexicoHigh.json"
@@ -890,33 +904,32 @@ with tab2:
         # Agregar el campo de altitud al GeoDataFrame
         gdf["Altitud"] = gdf["name"].map(altitudes)
 
-        # Calcular la radiación para cada estado
-        gdf["Radiación"] = gdf.apply(
-            lambda row: calculate_radiation(row.geometry.centroid.y, row["Altitud"]), axis=1
+        # Calcular la radiación promedio anual para cada estado
+        gdf["Radiación Anual (W/m²)"] = gdf.apply(
+            lambda row: calculate_annual_radiation(row.geometry.centroid.y, row["Altitud"]), axis=1
         )
 
         # Crear el mapa centrado en México
         mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
 
-        # Agregar una capa de color basada en la radiación
+        # Agregar una capa de color basada en la radiación promedio anual
         folium.Choropleth(
             geo_data=gdf,
-            name="Radiación Solar",
+            name="Radiación Solar Promedio Anual",
             data=gdf,
-            columns=["name", "Radiación"],
+            columns=["name", "Radiación Anual (W/m²)"],
             key_on="feature.properties.name",
-            fill_color="RdYlBu",  # Cambia a "RdYlBu" si lo deseas
+            fill_color="YlOrRd",
             fill_opacity=0.7,
             line_opacity=0.2,
-            legend_name="Radiación Solar (W/m²)",
-            reversescale=True
+            legend_name="Radiación Promedio Anual (W/m²)"
         ).add_to(mapa)
 
         # Mostrar el mapa en Streamlit
-        st.title("Mapa de Radiación Solar en México")
+        st.title("Mapa de Radiación Solar Promedio Anual en México")
         st.write("""
-        Este mapa muestra la radiación solar incidente estimada para cada estado de México,
-        considerando factores como la latitud y una altitud promedio asignada manualmente por estado.
+        Este mapa muestra la radiación solar promedio anual estimada para cada estado de México,
+        considerando la latitud, altitud y variaciones estacionales en el ángulo solar.
         """)
         st_folium(mapa, width=800, height=600)
 
