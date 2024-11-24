@@ -898,22 +898,17 @@ with tab2:
         # Crear el mapa centrado en México
         mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
 
-        # Personalizar los intervalos de la escala
-        bins = [600, 800, 900, 1000, 1100, 1200]  # Límites de la radiación en W/m²
-
-        # Agregar una capa de color basada en la radiación con escala "RdYlBu"
+        # Agregar una capa de color basada en la radiación
         folium.Choropleth(
             geo_data=gdf,
             name="Radiación Solar",
             data=gdf,
             columns=["name", "Radiación"],
             key_on="feature.properties.name",
-            fill_color="RdYlBu",  # Escala de colores
+            fill_color="YlOrRd",  # Cambia a "RdYlBu" si lo deseas
             fill_opacity=0.7,
             line_opacity=0.2,
-            legend_name="Radiación Solar (W/m²)",
-            bins=bins,  # Personalización de los intervalos
-            nan_fill_color="gray",  # Color para valores nulos o sin datos
+            legend_name="Radiación Solar (W/m²)"
         ).add_to(mapa)
 
         # Mostrar el mapa en Streamlit
@@ -921,7 +916,6 @@ with tab2:
         st.write("""
         Este mapa muestra la radiación solar incidente estimada para cada estado de México,
         considerando factores como la latitud y una altitud promedio asignada manualmente por estado.
-        Los colores corresponden a la escala de **Rojo (alta radiación)** a **Azul (baja radiación)**.
         """)
         st_folium(mapa, width=800, height=600)
 
