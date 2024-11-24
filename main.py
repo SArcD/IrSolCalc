@@ -849,17 +849,6 @@ with tab2:
         import numpy as np
 
         import folium
-        import streamlit as st
-        from streamlit_folium import st_folium
-        import math
-        import geopandas as gpd
-        import numpy as np
-        import folium
-        import streamlit as st
-        from streamlit_folium import st_folium
-        import numpy as np
-        import math
-        import folium
         import geopandas as gpd
         import streamlit as st
         from streamlit_folium import st_folium
@@ -889,7 +878,7 @@ with tab2:
             radiation = S0 * Ta * np.cos(np.radians(latitude)) * (1 + k * altitude)
             return max(0, radiation)  # Asegurarnos de que no haya valores negativos
 
-        # Cargar el archivo GeoJSON    
+        # Cargar el archivo GeoJSON
         geojson_file = "mexicoHigh.json"
 
         try:
@@ -898,7 +887,7 @@ with tab2:
             st.error(f"No se pudo cargar el archivo GeoJSON: {e}")
             st.stop()
 
-        # Agregar el campo de altitud al GeoDataFrame    
+        # Agregar el campo de altitud al GeoDataFrame
         gdf["Altitud"] = gdf["name"].map(altitudes)
 
         # Calcular la radiación para cada estado
@@ -909,17 +898,22 @@ with tab2:
         # Crear el mapa centrado en México
         mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
 
-        # Agregar una capa de color basada en la radiación
+        # Personalizar los intervalos de la escala
+        bins = [600, 800, 900, 1000, 1100, 1200]  # Límites de la radiación en W/m²
+
+        # Agregar una capa de color basada en la radiación con escala "RdYlBu"
         folium.Choropleth(
             geo_data=gdf,
             name="Radiación Solar",
             data=gdf,
             columns=["name", "Radiación"],
             key_on="feature.properties.name",
-            fill_color="YlOrRd",
+            fill_color="RdYlBu",  # Escala de colores
             fill_opacity=0.7,
             line_opacity=0.2,
-            legend_name="Radiación Solar (W/m²)"
+            legend_name="Radiación Solar (W/m²)",
+            bins=bins,  # Personalización de los intervalos
+            nan_fill_color="gray",  # Color para valores nulos o sin datos
         ).add_to(mapa)
 
         # Mostrar el mapa en Streamlit
@@ -927,8 +921,10 @@ with tab2:
         st.write("""
         Este mapa muestra la radiación solar incidente estimada para cada estado de México,
         considerando factores como la latitud y una altitud promedio asignada manualmente por estado.
+        Los colores corresponden a la escala de **Rojo (alta radiación)** a **Azul (baja radiación)**.
         """)
         st_folium(mapa, width=800, height=600)
+
 
 
 
