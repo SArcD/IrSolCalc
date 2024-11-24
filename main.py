@@ -851,27 +851,65 @@ with tab2:
         import folium
         import streamlit as st
         from streamlit_folium import st_folium
+        import math
 
-        # Crear el mapa centrado en México
-        mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
+        # Función para calcular radiación solar incidente
+        def calculate_annual_radiation(latitude):
+            """Calcula la radiación solar anual promedio basada en la latitud."""
+            S0 = 1361  # Constante solar en W/m²
+            T_a = 0.75  # Transmisión atmosférica promedio
+            radiation = S0 * T_a * math.cos(math.radians(latitude))
+            return max(0, radiation)  # Evitar valores negativos
 
-        # Agregar algunos marcadores como ejemplo
+        # Datos de ciudades con sus coordenadas y cálculo de radiación
         locations = [
             {"name": "Ciudad de México", "lat": 19.4326, "lon": -99.1332},
             {"name": "Guadalajara", "lat": 20.6597, "lon": -103.3496},
             {"name": "Monterrey", "lat": 25.6866, "lon": -100.3161},
+            {"name": "Mérida", "lat": 20.9674, "lon": -89.5926},
+            {"name": "Tijuana", "lat": 32.5149, "lon": -117.0382},
         ]
 
+        # Calcular radiación para cada ciudad y asignar colores
         for loc in locations:
-            folium.Marker(
+            loc["radiation"] = calculate_annual_radiation(loc["lat"])
+            # Asignar colores basados en radiación (cuanto más alta, más intenso el rojo)
+            if loc["radiation"] > 1000:
+                loc["color"] = "red"
+            elif loc["radiation"] > 800:
+                loc["color"] = "orange"
+            elif loc["radiation"] > 600:
+                loc["color"] = "yellow"
+            else:
+                loc["color"] = "green"
+
+        # Crear el mapa centrado en México
+        mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
+
+        # Agregar marcadores con colores basados en la radiación
+        for loc in locations:
+            folium.CircleMarker(
                 location=[loc["lat"], loc["lon"]],
-                popup=f"{loc['name']}",
-                icon=folium.Icon(color="blue")
+                radius=10,
+                color=loc["color"],
+                fill    =True,
+                fill_color=loc["color"],
+                fill_opacity=0.7,
+                popup=f"{loc['name']}: {loc['radiation']:.2f} W/m²"
             ).add_to(mapa)
 
         # Mostrar el mapa en Streamlit
-        st.title("Mapa Simplificado de México")
+        st.title("Mapa Simplificado de México con Radiación Solar")
+        st.write("""
+        Este mapa muestra un cálculo aproximado de la radiación solar incidente en varias ciudades de México.
+        Los colores indican la intensidad de la radiación:
+        - **Verde**: Baja
+        - **Amarillo**: Moderada
+        - **Naranja**: Alta
+        - **Rojo**: Muy alta
+        """)
         st_folium(mapa, width=800, height=600)
+
 
 
 
