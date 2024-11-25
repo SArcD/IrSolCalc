@@ -1144,4 +1144,111 @@ if selected_file:
     except Exception as e:
         st.error(f"Error al cargar el mosaico {selected_file}: {e}")
 
+import numpy as np
+import folium
+import geopandas as gpd
+import streamlit as st
+from streamlit_folium import st_folium
+
+# Parámetros para archivos ACE2
+tile_size = (1800, 1800)
+resolution = 1 / 120  # 30 arcsecs en grados
+tile_extent = 15  # Grados cubiertos por cada mosaico
+
+# Archivos ACE2 y sus posiciones
+files = {
+    "00N090W_LAND_30S.ACE2": (0, -90),
+    "00N105W_LAND_30S.ACE2": (0, -105),
+    "00N120W_LAND_30S.ACE2": (0, -120),
+    "15N090W_LAND_30S.ACE2": (15, -90),
+    "15N105W_LAND_30S.ACE2": (15, -105),
+    "15N120W_LAND_30S.ACE2": (15, -120),
+    "30N090W_LAND_30S.ACE2": (30, -90),
+    "30N105W_LAND_30S.ACE2": (30, -105),
+    "30N120W_LAND_30S.ACE2": (30, -120),
+}
+
+# Crear grilla global para México
+min_lat, max_lat = 0, 45
+min_lon, max_lon = -120, -75
+lat_points = int((max_lat - min_lat) / resolution)
+lon_points = int((max_lon - min_lon) / resolution)
+global_elevation = np.full((lat_points, lon_points), -32768, dtype=np.float32)
+
+def read_ace2(file_path):
+    """Leer archivo ACE2 y convertir a matriz NumPy."""
+    return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
+
+# Combinar mosaicos
+for file, (sw_lat, sw_lon) in files.items():
+    try:
+        data = read_ace2(file)
+        lat_start = int((max_lat - sw_lat - tile_extent) / resolution)
+        lat_end = lat_start + tile_size[0]
+        lon_start = int((sw_lon - min_lon) / resolution)
+        lon_end = lon_start + tile_size[1]
+        global_elevation[lat_start:lat_end, lon_start:lon_end] = data
+    except Exception as e:
+        st.warning(f"Error con el archivo {file}: {e}")
+
+# Parámetros para radiación solar
+S0 = 1361  # Constante solar (W/m²)
+Ta = 0.75  # Transmisión atmosférica promedio
+k = 0.12   # Incremento de radiación por km de altitud
+
+def calculate_annual_radiation(latitude, altitude):
+    """Calcular radiación solar promedio anual."""
+    total_radiation = 0
+    for day in range(1, 366):
+        declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
+        sin_lat_decl = np.sin(np.radians(latitude)) * np.sin(np.radians(declination))
+        cos_lat_decl = np.cos(np.radians(latitude)) * np.cos(np.radians(declination))
+        daily_radiation = S0 * Ta * (sin_lat_decl + cos_lat_decl) * (1 + k * altitude)
+        total_radiation += max(0, daily_radiation)
+    return total_radiation / 365
+
+# Cargar archivo GeoJSON
+geojson_file = "mx.json"  # Sustituir con tu archivo
+try:
+    gdf = gpd.read_file(geojson_file)
+except Exception as e:
+    st.error(f"No se pudo cargar el archivo GeoJSON: {e}")
+    st.stop()
+
+# Calcular elevación promedio y radiación por estado
+def calculate_state_radiation(row):
+    state_shape = row.geometry
+    minx, miny, maxx, maxy = state_shape.bounds
+    lat_indices = slice(
+        int((max_lat - maxy) / resolution),
+        int((max_lat - miny) / resolution)
+    )
+    lon_indices = slice(
+        int((minx - min_lon) / resolution),
+        int((maxx - min_lon) / resolution)
+    )
+    state_elevation = global_elevation[lat_indices, lon_indices]
+    avg_altitude = np.mean(state_elevation[state_elevation > 0]) / 1000  # km
+    latitude = state_shape.centroid.y
+    return calculate_annual_radiation(latitude, avg_altitude)
+
+gdf["Radiación Promedio"] = gdf.apply(calculate_state_radiation, axis=1)
+
+# Crear mapa
+mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
+folium.Choropleth(
+    geo_data=gdf,
+    name="Radiación Solar",
+    data=gdf,
+    columns=["name", "Radiación Promedio"],
+    key_on="feature.properties.name",
+    fill_color="YlOrRd",
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name="Radiación Promedio Anual (W/m²)"
+).add_to(mapa)
+
+# Mostrar mapa en Streamlit
+st.title("Mapa Detallado de Radiación Solar Promedio en México")
+st_folium(mapa, width=800, height=600)
 
