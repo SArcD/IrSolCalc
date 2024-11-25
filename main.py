@@ -1105,11 +1105,17 @@ def plot_tile(data, sw_lat, sw_lon):
     longitudes = np.linspace(sw_lon, sw_lon + tile_extent, data.shape[1])
     masked_data = np.ma.masked_where(data <= 0, data)  # Mascara valores no válidos
 
+    # Calcular el rango de valores positivos
+    valid_min = masked_data.min()
+    valid_max = masked_data.max()
+
     fig = go.Figure(data=go.Heatmap(
         z=masked_data,
         x=longitudes,
         y=latitudes,
         colorscale="viridis",
+        zmin=valid_min,  # Límite inferior de la escala
+        zmax=valid_max,  # Límite superior de la escala
         colorbar=dict(title="Elevación (m)")
     ))
     fig.update_layout(
@@ -1137,4 +1143,5 @@ if selected_file:
         st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
         st.error(f"Error al cargar el mosaico {selected_file}: {e}")
+
 
