@@ -1684,7 +1684,7 @@ folium.Choropleth(
     geo_data=gdf,
     name="Radiación Solar",
     data=gdf,
-    columns=["NOM_GEO", "Radiación Promedio"],
+    columns=["CVE_MUN", "Radiación Promedio"],
     key_on="feature.properties.NOM_GEO",
     fill_color="YlOrRd",
     fill_opacity=0.7,
