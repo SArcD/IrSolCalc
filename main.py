@@ -1668,7 +1668,7 @@ def calculate_annual_radiation(latitude, altitude, n_cloud):
         total_radiation += max(0, H)
     
     # Promedio anual diario de radiación (kWh/m²/día)
-    average_radiation = total_radiation / 365 / (3600 * 1000)  # Convertir de J a kWh
+    average_radiation = total_radiation / 365  # Convertir de J a kWh
     return average_radiation
 
 # Calcular elevación promedio y radiación para cada municipio
