@@ -1252,52 +1252,52 @@ folium.Choropleth(
 st.title("Mapa Detallado de Radiación Solar Promedio en México")
 st_folium(mapa, width=800, height=600)
 
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 import gdown
 
-# Configuración inicial
-ace2_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"
-ace2_file_path = "Colima_ACE2.ace2"
-tile_size = (6000, 6000)  # Dimensiones del archivo ACE2 de 9 arcseconds
+# Parámetros del archivo ACE2
+file_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"  # URL del archivo para Colima
+file_path = "Colima_ACE2.ace2"  # Nombre local del archivo
+tile_size = (6000, 6000)  # Dimensiones del mosaico ACE2 (9 arcseconds)
 
-# Descargar archivo ACE2 si no existe
-if not os.path.exists(ace2_file_path):
-    st.write("Descargando archivo de elevación...")
-    gdown.download(ace2_url, ace2_file_path, quiet=False)
+# Descargar el archivo si no existe
+if not os.path.exists(file_path):
+    st.write("Descargando el archivo ACE2 para Colima...")
+    gdown.download(file_url, file_path, quiet=False)
 
 # Leer el archivo ACE2
 def read_ace2(file_path, tile_size):
-    """Leer archivo ACE2 y convertirlo a matriz NumPy."""
+    """Leer un archivo ACE2 y convertirlo en una matriz NumPy."""
     return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
 
 try:
-    elevation_data = read_ace2(ace2_file_path, tile_size)
+    elevation_data = read_ace2(file_path, tile_size)
     st.write("Datos de elevación cargados correctamente.")
 except Exception as e:
     st.error(f"Error al cargar el archivo ACE2: {e}")
     st.stop()
 
-# Máscara para valores de elevación no válidos
+# Máscara para valores no válidos
 elevation_masked = np.ma.masked_where(elevation_data <= 0, elevation_data)
 
-# Visualizar el mosaico de elevación
+# Visualizar los datos de elevación
 fig, ax = plt.subplots(figsize=(10, 8))
 cmap = plt.cm.terrain
-cmap.set_bad(color="white")  # Colorear valores inválidos en blanco
+cmap.set_bad(color="white")  # Colorear los valores inválidos en blanco
 elevation_plot = ax.imshow(
     elevation_masked,
     cmap=cmap,
-    origin="upper"
+    origin="upper",
+    extent=[-105, -103, 18, 20]  # Aproximado para Colima (ajustar si es necesario)
 )
 plt.colorbar(elevation_plot, ax=ax, label="Elevación (m)")
-ax.set_title("Mapa de Elevación de Colima")
-ax.set_xlabel("Longitud (grilla)")
-ax.set_ylabel("Latitud (grilla)")
+ax.set_title("Mapa de Elevación para Colima")
+ax.set_xlabel("Longitud")
+ax.set_ylabel("Latitud")
 
-# Mostrar mapa en Streamlit
+# Mostrar el mapa en Streamlit
 st.title("Mapa de Elevación para Colima")
 st.pyplot(fig)
 
