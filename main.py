@@ -1449,3 +1449,120 @@ folium.Choropleth(
 st.title("Mapa de Radiación Solar Promedio en Colima")
 st_folium(mapa, width=800, height=600)
 
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import geopandas as gpd
+import streamlit as st
+from streamlit_folium import st_folium
+import folium
+import gdown
+
+# Parámetros del archivo ACE2
+file_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"  # URL del archivo para Colima
+file_path = "Colima_ACE2.ace2"  # Nombre local del archivo
+tile_size = (6000, 6000)  # Dimensiones del mosaico ACE2 (9 arcseconds)
+geojson_path = "colima.json"  # Archivo GeoJSON de Colima
+
+# Descargar el archivo ACE2 si no existe
+if not os.path.exists(file_path):
+    st.write("Descargando el archivo ACE2 para Colima...")
+    gdown.download(file_url, file_path, quiet=False)
+
+# Leer el archivo ACE2
+def read_ace2(file_path, tile_size):
+    """Leer un archivo ACE2 y convertirlo en una matriz NumPy."""
+    return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
+
+try:
+    elevation_data = read_ace2(file_path, tile_size)
+    st.write("Datos de elevación cargados correctamente.")
+except Exception as e:
+    st.error(f"Error al cargar el archivo ACE2: {e}")
+    st.stop()
+
+# Máscara para valores no válidos
+elevation_masked = np.ma.masked_where(elevation_data <= 0, elevation_data)
+
+# Parámetros para radiación solar
+S0 = 1361  # Constante solar (W/m²)
+Ta = 0.75  # Transmisión atmosférica promedio
+k = 0.12   # Incremento de radiación por km de altitud
+
+# Cargar el archivo GeoJSON de Colima
+try:
+    gdf = gpd.read_file(geojson_path)
+    st.write("GeoJSON cargado correctamente.")
+except Exception as e:
+    st.error(f"Error al cargar el archivo GeoJSON: {e}")
+    st.stop()
+
+# Valores de nubosidad (n_cloud) estimados para los municipios de Colima
+n_cloud_values = {
+    "Manzanillo": 0.18, "Armería": 0.21, "Tecomán": 0.22,
+    "Colima": 0.25, "Villa de Álvarez": 0.26, "Comala": 0.29,
+    "Coquimatlán": 0.27, "Cuauhtémoc": 0.32, "Ixtlahuacán": 0.34,
+    "Minatitlán": 0.37
+}
+gdf["n_cloud"] = gdf["NOM_MUN"].map(n_cloud_values)
+
+# Función para calcular radiación promedio anual
+def calculate_annual_radiation(latitude, altitude, n_cloud):
+    total_radiation = 0
+    for day in range(1, 366):
+        declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
+        declination_rad = np.radians(declination)
+        latitude_rad = np.radians(latitude)
+        h_s = np.arccos(-np.tan(latitude_rad) * np.tan(declination_rad))
+        daily_radiation = (
+            S0 * Ta * (1 + k * altitude) *
+            (np.cos(latitude_rad) * np.cos(declination_rad) * np.sin(h_s) +
+             h_s * np.sin(latitude_rad) * np.sin(declination_rad))
+        ) * (1 - 0.5 * n_cloud)  # Ajuste por nubosidad
+        total_radiation += max(0, daily_radiation)
+    return total_radiation / 365
+
+# Calcular elevación promedio y radiación para cada municipio
+def calculate_municipality_radiation(row):
+    bounds = row.geometry.bounds  # Obtener límites del municipio
+    min_lon, min_lat, max_lon, max_lat = bounds
+    
+    # Asegurarnos de que los índices estén dentro de los límites del mosaico
+    lon_indices = slice(
+        max(0, int((min_lon + 105) * tile_size[1] / 15)),
+        min(tile_size[1], int((max_lon + 105) * tile_size[1] / 15))
+    )
+    lat_indices = slice(
+        max(0, int((30 - max_lat) * tile_size[0] / 15)),
+        min(tile_size[0], int((30 - min_lat) * tile_size[0] / 15))
+    )
+
+    # Extraer elevación del mosaico
+    municipality_elevation = elevation_data[lat_indices, lon_indices]
+    if municipality_elevation[municipality_elevation > 0].size == 0:
+        return 0  # Valor por defecto en caso de datos vacíos
+
+    avg_altitude = np.mean(municipality_elevation[municipality_elevation > 0]) / 1000  # En km
+    latitude = row.geometry.centroid.y
+    n_cloud = row["n_cloud"]  # Extraer n_cloud del municipio
+    return calculate_annual_radiation(latitude, avg_altitude, n_cloud)
+
+gdf["Radiación Promedio"] = gdf.apply(calculate_municipality_radiation, axis=1)
+
+# Crear un mapa interactivo
+mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
+folium.Choropleth(
+    geo_data=gdf,
+    name="Radiación Solar",
+    data=gdf,
+    columns=["CVE_MUN", "Radiación Promedio"],
+    key_on="feature.properties.CVE_MUN",
+    fill_color="YlOrRd",
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name="Radiación Promedio Anual (W/m²)"
+).add_to(mapa)
+
+# Mostrar mapa en Streamlit
+st.title("Mapa de Radiación Solar Promedio en Colima con Ajuste por Nubosidad")
+st_folium(mapa, width=800, height=600)
