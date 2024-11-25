@@ -989,89 +989,80 @@ with tab2:
     
 ######################################33
 
-        import numpy as np
-        import matplotlib.pyplot as plt
-        import streamlit as st
-        import os
+import numpy as np
+import matplotlib.pyplot as plt
+import streamlit as st
 
-        # Parámetros iniciales
-        DATA_TYPE = np.int16  # Tipo de datos: enteros de 16 bits
-        POSSIBLE_SHAPES = [(1800, 1800), (3600, 3600)]  # Tamaños posibles
+# Parámetros de los archivos ACE2
+ROWS = 1800
+COLUMNS = 1800
+DATA_TYPE = np.float32  # Datos en formato de 32 bits (float)
+OCEAN_VALUE = -500
+VOID_VALUE = -32768
 
-        def read_ace2(file_path, shape):
-            """
-            Lee un archivo ACE2 y convierte a una matriz numpy.
+def read_ace2(file_path):
+    """
+    Lee un archivo ACE2 y lo convierte a una matriz numpy.
     
-            Args:
-                file_path (str): Ruta del archivo ACE2.
-                shape (tuple): Dimensiones de la grilla.
+    Args:
+        file_path (str): Ruta del archivo ACE2.
     
-            Returns:
-                np.ndarray: Datos de elevación.
-            """
-            try:
-                with open(file_path, "rb") as f:
-                    data = np.fromfile(f, dtype=DATA_TYPE)
-                if data.size != shape[0] * shape[1]:
-                    raise ValueError(f"Tamaño inesperado: {data.size}. No coincide con la grilla {shape}.")
-                return data.reshape(shape)
-            except Exception as e:
-                raise ValueError(f"Error al leer el archivo {file_path}: {e}")
+    Returns:
+        np.ndarray: Matriz de datos de elevación.
+    """
+    try:
+        with open(file_path, "rb") as f:
+            data = np.fromfile(f, dtype=DATA_TYPE).reshape((ROWS, COLUMNS))
+        # Reemplazar valores especiales por NaN
+        data[data == OCEAN_VALUE] = np.nan
+        data[data == VOID_VALUE] = np.nan
+        return data
+    except Exception as e:
+        raise ValueError(f"Error al leer el archivo {file_path}: {e}")
 
-        def combine_ace2(files, shapes):
-            """
-            Combina archivos ACE2 en un mosaico.
+def combine_ace2(files):
+    """
+    Combina archivos ACE2 en un mosaico único.
     
-            Args:
-                files (list): Lista de archivos.
-                shapes (list): Lista de posibles tamaños de grilla.
+    Args:
+        files (list): Lista de archivos ACE2.
     
-            Returns:
-                np.ndarray: Elevaciones combinadas.
-            """
-            combined_data = None
-            for file in files:
-                success = False
-                for shape in shapes:
-                    try:
-                        data = read_ace2(file, shape)
-                        success = True
-                        break
-                    except ValueError:
-                        continue
-                if not success:
-                    raise ValueError(f"No se pudo leer el archivo {file} con ninguna de las formas posibles.")
-        
-                # Combinar
-                if combined_data is None:
-                    combined_data = data
-                else:
-                    combined_data = np.maximum(combined_data, data)  # Tomar valores máximos
-            return combined_data
+    Returns:
+        np.ndarray: Mosaico combinado de elevaciones.
+    """
+    combined_data = None
+    for file in files:
+        data = read_ace2(file)
+        if combined_data is None:
+            combined_data = data
+        else:
+            # Expandir y combinar mosaicos
+            combined_data = np.maximum(combined_data, data, where=~np.isnan(data))
+    return combined_data
 
-        # Archivos ACE2
-        ace2_files = [
-            "15N090W_LAND_30S.ACE2",
-            "15N105W_LAND_30S.ACE2",
-            "15N120W_LAND_30S.ACE2",
-            "30N120W_LAND_30S.ACE2"
-        ]
+# Archivos ACE2 (sube tus propios archivos)
+ace2_files = [
+    "15N090W_LAND_30S.ACE2",
+    "15N105W_LAND_30S.ACE2",
+    "15N120W_LAND_30S.ACE2",
+    "30N120W_LAND_30S.ACE2"
+]
 
-        try:
-            # Leer y combinar
-            combined_elevation = combine_ace2(ace2_files, shapes=POSSIBLE_SHAPES)
-    
-            # Visualización en Streamlit
-            st.title("Mapa de Elevación (Archivos ACE2, 30 arcsecs)")
-            fig, ax = plt.subplots(figsize=(10, 8))
-            cax = ax.imshow(combined_elevation, cmap="terrain")
-            fig.colorbar(cax, ax=ax, label="Elevación (m)")
-            ax.set_title("Elevación Combinada")
-            ax.set_xlabel("Longitud")
-            ax.set_ylabel("Latitud")
-            st.pyplot(fig)
-        except Exception as e:
-            st.error(f"Ocurrió un error: {e}")
+try:
+    # Leer y combinar datos
+    combined_elevation = combine_ace2(ace2_files)
+
+    # Visualización en Streamlit
+    st.title("Mapa de Elevación (Datos ACE2, 30 arcsecs)")
+    fig, ax = plt.subplots(figsize=(10, 8))
+    cax = ax.imshow(combined_elevation, cmap="terrain", origin="upper")
+    fig.colorbar(cax, ax=ax, label="Elevación (m)")
+    ax.set_title("Elevación Combinada para México")
+    ax.set_xlabel("Longitud")
+    ax.set_ylabel("Latitud")
+    st.pyplot(fig)
+except Exception as e:
+    st.error(f"Ocurrió un error: {e}")
 
 
    
