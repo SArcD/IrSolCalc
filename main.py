@@ -1343,15 +1343,30 @@ Ta = 0.75  # Transmisión atmosférica promedio
 k = 0.12   # Incremento de radiación por km de altitud
 
 def calculate_annual_radiation(latitude, altitude):
-    """Calcular radiación solar promedio anual."""
+    """Calcular radiación solar promedio anual considerando declinación solar y ángulo horario."""
     total_radiation = 0
     for day in range(1, 366):
+        # Calcular declinación solar
         declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
-        sin_lat_decl = np.sin(np.radians(latitude)) * np.sin(np.radians(declination))
-        cos_lat_decl = np.cos(np.radians(latitude)) * np.cos(np.radians(declination))
-        daily_radiation = S0 * Ta * (sin_lat_decl + cos_lat_decl) * (1 + k * altitude)
-        total_radiation += max(0, daily_radiation)
-    return total_radiation / 365
+        declination_rad = np.radians(declination)
+        
+        # Convertir latitud a radianes
+        latitude_rad = np.radians(latitude)
+        
+        # Calcular ángulo horario del amanecer/atardecer
+        h_s = np.arccos(-np.tan(latitude_rad) * np.tan(declination_rad))
+        
+        # Calcular radiación diaria
+        daily_radiation = (
+            S0 * Ta * (1 + k * altitude) * 
+            (np.cos(latitude_rad) * np.cos(declination_rad) * np.sin(h_s) +
+             h_s * np.sin(latitude_rad) * np.sin(declination_rad))
+        )
+        
+        total_radiation += max(0, daily_radiation)  # Evitar valores negativos
+
+    return total_radiation / 365  # Promedio anual
+
 
 # Cargar el archivo GeoJSON de Colima
 try:
@@ -1361,28 +1376,10 @@ except Exception as e:
     st.error(f"Error al cargar el archivo GeoJSON: {e}")
     st.stop()
 
-# Calcular elevación promedio y radiación para cada municipio
-#def calculate_municipality_radiation(row):
-#    bounds = row.geometry.bounds  # Obtener límites del municipio
-#    min_lon, min_lat, max_lon, max_lat = bounds
-#    lon_indices = slice(
-#        int((min_lon + 105) * tile_size[1] / 15),
-#        int((max_lon + 105) * tile_size[1] / 15)
-#    )
-#    lat_indices = slice(
-#        int((20 - max_lat) * tile_size[0] / 15),
-#        int((20 - min_lat) * tile_size[0] / 15)
-#    )
-#    # Extraer elevación del mosaico
-#    municipality_elevation = elevation_data[lat_indices, lon_indices]
-#    avg_altitude = np.mean(municipality_elevation[municipality_elevation > 0]) / 1000  # En km
-#    latitude = row.geometry.centroid.y
-#    return calculate_annual_radiation(latitude, avg_altitude)
-
 def calculate_municipality_radiation(row):
     bounds = row.geometry.bounds  # Obtener límites del municipio
-    #min_lon, min_lat, max_lon, max_lat = bounds
-    min_lat, max_lat, min_lon, max_lon = 15, 30, -105, -90
+    min_lon, min_lat, max_lon, max_lat = bounds
+    #min_lat, max_lat, min_lon, max_lon = 15, 30, -105, -90
 
     
     # Asegurarnos de que los índices estén dentro de los límites del mosaico
