@@ -1638,38 +1638,28 @@ gdf["n_cloud"] = gdf.apply(get_ncloud, cloud_data=cloud_data, axis=1)
 
 def calculate_annual_radiation(latitude, altitude, n_cloud):
     total_radiation = 0
-    latitude_rad = np.radians(latitude)
     for day in range(1, 366):
-        # Factor de corrección de excentricidad
-        E0 = 1 + 0.033 * np.cos(2 * np.pi * day / 365)
-        
         # Declinación solar
-        declination = 23.45 * np.sin(np.radians(360 * (284 + day) / 365))
+        declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
         declination_rad = np.radians(declination)
         
+        # Convertir latitud a radianes
+        latitude_rad = np.radians(latitude)
+        
         # Ángulo horario del amanecer/atardecer
-        cos_h_s = -np.tan(latitude_rad) * np.tan(declination_rad)
-        cos_h_s = np.clip(cos_h_s, -1, 1)  # Asegurar valores válidos
-        h_s = np.arccos(cos_h_s)
+        h_s = np.arccos(np.clip(-np.tan(latitude_rad) * np.tan(declination_rad), -1, 1))
         
-        # Radiación extraterrestre diaria en la cima de la atmósfera (W/m²)
-        H0 = (24 / np.pi) * S0 * E0 * (
-            np.cos(latitude_rad) * np.cos(declination_rad) * np.sin(h_s) +
-            h_s * np.sin(latitude_rad) * np.sin(declination_rad)
-        )
+        # Radiación diaria ajustada
+        daily_radiation = (
+            S0 * Ta * (1 + k * altitude) *
+            (np.cos(latitude_rad) * np.cos(declination_rad) * np.sin(h_s) +
+             h_s * np.sin(latitude_rad) * np.sin(declination_rad))
+        ) * (1 - 0.5 * n_cloud)  # Ajuste por nubosidad
         
-        # Ajuste por transmisión atmosférica y altitud
-        H = H0 * Ta * (1 + k * altitude)
-        
-        # Ajuste por nubosidad
-        H = H * (1 - n_cloud)
-        
-        # Acumular radiación diaria
-        total_radiation += max(0, H)
-    
-    # Promedio anual diario de radiación (W/m²)
-    average_radiation = total_radiation / 365
-    return average_radiation
+        total_radiation += max(0, daily_radiation)  # Evitar valores negativos
+
+    return total_radiation / 365  # Promedio anual
+
 # Calcular elevación promedio y radiación para cada municipio
 def calculate_municipality_radiation(row):
     bounds = row.geometry.bounds  # Obtener límites del municipio
