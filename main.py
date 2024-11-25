@@ -1074,7 +1074,7 @@ with tab2:
                 )
 
             except Exception as e:
-                st.error(f"Error al procesar el archivo SVG: {e}")
+                st.error(f"Error al procesar el archivo SVG: {e}") 
 
    
 
