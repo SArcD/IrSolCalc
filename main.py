@@ -1636,21 +1636,40 @@ def get_ncloud(row, cloud_data):
 
 gdf["n_cloud"] = gdf.apply(get_ncloud, cloud_data=cloud_data, axis=1)
 
-# Función para calcular radiación promedio anual
 def calculate_annual_radiation(latitude, altitude, n_cloud):
     total_radiation = 0
+    latitude_rad = np.radians(latitude)
     for day in range(1, 366):
-        declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
+        # Factor de corrección de excentricidad
+        E0 = 1 + 0.033 * np.cos(2 * np.pi * day / 365)
+        
+        # Declinación solar
+        declination = 23.45 * np.sin(np.radians(360 * (284 + day) / 365))
         declination_rad = np.radians(declination)
-        latitude_rad = np.radians(latitude)
-        h_s = np.arccos(-np.tan(latitude_rad) * np.tan(declination_rad))
-        daily_radiation = (
-            S0 * Ta * (1 + k * altitude) *
-            (np.cos(latitude_rad) * np.cos(declination_rad) * np.sin(h_s) +
-             h_s * np.sin(latitude_rad) * np.sin(declination_rad))
-        ) * (1 - 0.5 * n_cloud)  # Ajuste por nubosidad
-        total_radiation += max(0, daily_radiation)
-    return total_radiation / 365
+        
+        # Ángulo horario del amanecer/atardecer
+        cos_h_s = -np.tan(latitude_rad) * np.tan(declination_rad)
+        cos_h_s = np.clip(cos_h_s, -1, 1)  # Asegurar valores válidos
+        h_s = np.arccos(cos_h_s)
+        
+        # Radiación extraterrestre diaria en la cima de la atmósfera (J/m²)
+        H0 = (24 * 3600 / np.pi) * S0 * E0 * (
+            np.cos(latitude_rad) * np.cos(declination_rad) * np.sin(h_s) +
+            h_s * np.sin(latitude_rad) * np.sin(declination_rad)
+        )
+        
+        # Ajuste por transmisión atmosférica y altitud
+        H = H0 * Ta * (1 + k * altitude)
+        
+        # Ajuste por nubosidad
+        H = H * (1 - n_cloud)
+        
+        # Acumular radiación diaria
+        total_radiation += max(0, H)
+    
+    # Promedio anual diario de radiación (kWh/m²/día)
+    average_radiation = total_radiation / 365 / (3600 * 1000)  # Convertir de J a kWh
+    return average_radiation
 
 # Calcular elevación promedio y radiación para cada municipio
 def calculate_municipality_radiation(row):
