@@ -1254,91 +1254,93 @@ st_folium(mapa, width=800, height=600)
 
 import os
 import numpy as np
-import folium
 import geopandas as gpd
-import streamlit as st
+import folium
 from streamlit_folium import st_folium
-import gdown
+import streamlit as st
 
-# Descargar el archivo ACE2 si no está disponible
+# URL del archivo ACE2 y GeoJSON
 ace2_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"
+geojson_url = "Colima.json"
+
+# Descargar el archivo ACE2 si no existe
 ace2_file_path = "Colima_ACE2.ace2"
 if not os.path.exists(ace2_file_path):
-    with st.spinner("Descargando datos de elevación..."):
-        gdown.download(ace2_url, ace2_file_path, quiet=False)
+    st.write("Descargando archivo de elevación...")
+    import gdown
+    gdown.download(ace2_url, ace2_file_path, quiet=False)
 
-# Parámetros para archivos ACE2 (9 arc seconds)
-tile_size = (6000, 6000)  # Dimensiones de cada mosaico
-resolution = 1 / (3600 / 9)  # Resolución de 9 arcsecs en grados
-tile_extent = 15  # Cada mosaico cubre 15x15 grados
-
-# Leer archivo ACE2
-def read_ace2(file_path, tile_size):
+# Leer el archivo ACE2
+tile_size = (6000, 6000)  # Tamaño de las celdas en el archivo de 9 arcsecs
+def read_ace2(file_path):
     return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
 
+elevation_data = read_ace2(ace2_file_path)
+
+# Leer el archivo GeoJSON
 try:
-    elevation_data = read_ace2(ace2_file_path, tile_size)
+    gdf = gpd.read_file(geojson_url)
+    st.write("Archivo GeoJSON cargado correctamente.")
 except Exception as e:
-    st.error(f"Error al procesar el archivo ACE2: {e}")
+    st.error(f"Error al cargar el archivo GeoJSON: {e}")
     st.stop()
 
-# Cargar archivo GeoJSON
-geojson_file = "Colima.json"
-try:
-    gdf = gpd.read_file(geojson_file)
-except Exception as e:
-    st.error(f"No se pudo cargar el archivo GeoJSON: {e}")
-    st.stop()
+# Mostrar las columnas disponibles en el GeoDataFrame
+st.write("Columnas en el GeoDataFrame:", gdf.columns)
 
-# Parámetros de radiación solar
+# Parámetros para radiación solar
 S0 = 1361  # Constante solar (W/m²)
 Ta = 0.75  # Transmisión atmosférica promedio
 k = 0.12   # Incremento de radiación por km de altitud
 
-# Calcular radiación para cada polígono
-def calculate_radiation_for_polygon(polygon, elevation_data, resolution):
-    minx, miny, maxx, maxy = polygon.bounds
-    lat_indices = slice(
-        int((15 - maxy) / resolution),  # 15 es la latitud norte del mosaico
-        int((15 - miny) / resolution)
-    )
-    lon_indices = slice(
-        int((minx + 120) / resolution),  # -120 es la longitud oeste del mosaico
-        int((maxx + 120) / resolution)
-    )
-    # Extraer elevación
-    polygon_elevation = elevation_data[lat_indices, lon_indices]
-    avg_altitude = np.mean(polygon_elevation[polygon_elevation > 0]) / 1000  # Convertir a km
-    latitude = polygon.centroid.y
-    # Calcular radiación anual
+def calculate_annual_radiation(latitude, altitude):
+    """Calcular radiación solar promedio anual."""
     total_radiation = 0
     for day in range(1, 366):
         declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
         sin_lat_decl = np.sin(np.radians(latitude)) * np.sin(np.radians(declination))
         cos_lat_decl = np.cos(np.radians(latitude)) * np.cos(np.radians(declination))
-        daily_radiation = S0 * Ta * (sin_lat_decl + cos_lat_decl) * (1 + k * avg_altitude)
+        daily_radiation = S0 * Ta * (sin_lat_decl + cos_lat_decl) * (1 + k * altitude)
         total_radiation += max(0, daily_radiation)
     return total_radiation / 365
 
-# Calcular radiación promedio para cada polígono
-gdf["Radiación Promedio"] = gdf.geometry.apply(
-    lambda geom: calculate_radiation_for_polygon(geom, elevation_data, resolution)
-)
+# Calcular elevación promedio y radiación por región
+def calculate_region_radiation(row):
+    region_shape = row.geometry
+    minx, miny, maxx, maxy = region_shape.bounds
+    lat_indices = slice(
+        int((tile_size[0] * (1 - (maxy / 15)))),
+        int((tile_size[0] * (1 - (miny / 15))))
+    )
+    lon_indices = slice(
+        int((tile_size[1] * ((minx + 120) / 15))),
+        int((tile_size[1] * ((maxx + 120) / 15)))
+    )
+    region_elevation = elevation_data[lat_indices, lon_indices]
+    avg_altitude = np.mean(region_elevation[region_elevation > 0]) / 1000  # Convertir a km
+    latitude = region_shape.centroid.y
+    return calculate_annual_radiation(latitude, avg_altitude)
 
-# Crear mapa
+# Calcular radiación promedio para cada región
+gdf["Radiación Promedio"] = gdf.apply(calculate_region_radiation, axis=1)
+
+# Crear el mapa
 mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
+
+# Reemplaza "name" con la columna correcta en el GeoJSON
+key_column = "name"  # Actualiza según las columnas disponibles
 folium.Choropleth(
     geo_data=gdf,
     name="Radiación Solar",
     data=gdf,
-    columns=["name", "Radiación Promedio"],
-    key_on="feature.properties.name",
+    columns=[key_column, "Radiación Promedio"],  # Cambia "name" si es necesario
+    key_on=f"feature.properties.{key_column}",  # Ajusta el acceso al GeoJSON
     fill_color="YlOrRd",
     fill_opacity=0.7,
     line_opacity=0.2,
     legend_name="Radiación Promedio Anual (W/m²)"
 ).add_to(mapa)
 
-# Mostrar mapa en Streamlit
-st.title("Radiación Solar Promedio en Colima")
+# Mostrar el mapa en Streamlit
+st.title("Mapa de Radiación Solar Promedio en Colima")
 st_folium(mapa, width=800, height=600)
