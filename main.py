@@ -1291,7 +1291,7 @@ elevation_plot = ax.imshow(
     elevation_masked,
     cmap=cmap,
     origin="upper",
-    extent=[-105, -120, 15, 30]  # Aproximado para Colima (ajustar si es necesario)
+    extent=[-105, -90, 15, 30]  # Aproximado para Colima (ajustar si es necesario)
 )
 plt.colorbar(elevation_plot, ax=ax, label="Elevación (m)")
 ax.set_title("Mapa de Elevación para Colima")
@@ -1388,8 +1388,8 @@ def calculate_municipality_radiation(row):
         min(tile_size[1], int((max_lon + 105) * tile_size[1] / 15))
     )
     lat_indices = slice(
-        max(0, int((20 - max_lat) * tile_size[0] / 15)),
-        min(tile_size[0], int((20 - min_lat) * tile_size[0] / 15))
+        max(0, int((30 - max_lat) * tile_size[0] / 15)),
+        min(tile_size[0], int((30 - min_lat) * tile_size[0] / 15))
     )
 
     # Extraer elevación del mosaico
