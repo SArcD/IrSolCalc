@@ -1274,7 +1274,7 @@ if not os.path.exists(ace2_file_path):
 
 # Leer el archivo ACE2
 def read_ace2(file_path, tile_size):
-    """Leer el archivo ACE2 y convertirlo en una matriz NumPy."""
+    """Leer archivo ACE2 y convertirlo a matriz NumPy."""
     return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
 
 try:
@@ -1292,61 +1292,42 @@ except Exception as e:
     st.error(f"Error al cargar el archivo GeoJSON: {e}")
     st.stop()
 
-# Parámetros para radiación solar
-S0 = 1361  # Constante solar (W/m²)
-Ta = 0.75  # Transmisión atmosférica promedio
-k = 0.12   # Incremento de radiación por km de altitud
+# Extraer elevación promedio por punto dentro del estado de Colima
+def extract_elevation(lat, lon, elevation_data, tile_size, resolution):
+    """Extraer elevación para una latitud y longitud específica."""
+    row = int(tile_size[0] * (1 - (lat / 15)))
+    col = int(tile_size[1] * ((lon + 120) / 15))
+    if 0 <= row < tile_size[0] and 0 <= col < tile_size[1]:
+        return elevation_data[row, col]
+    return np.nan
 
-def calculate_annual_radiation(latitude, altitude):
-    """Calcular radiación solar promedio anual."""
-    total_radiation = 0
-    for day in range(1, 366):
-        declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
-        sin_lat_decl = np.sin(np.radians(latitude)) * np.sin(np.radians(declination))
-        cos_lat_decl = np.cos(np.radians(latitude)) * np.cos(np.radians(declination))
-        daily_radiation = S0 * Ta * (sin_lat_decl + cos_lat_decl) * (1 + k * altitude)
-        total_radiation += max(0, daily_radiation)
-    return total_radiation / 365
+def map_elevation(geometry, elevation_data, tile_size, resolution):
+    """Mapear elevación dentro de una geometría."""
+    elevations = []
+    for x, y in geometry.exterior.coords:
+        elevation = extract_elevation(y, x, elevation_data, tile_size, resolution)
+        elevations.append(elevation)
+    return np.nanmean(elevations)
 
-# Extraer elevación promedio por zona del GeoJSON
-def calculate_region_elevation(row, elevation_data, tile_size, resolution):
-    """Calcular la elevación promedio dentro de una región específica."""
-    region_shape = row.geometry
-    minx, miny, maxx, maxy = region_shape.bounds
+# Agregar elevación a GeoDataFrame
+gdf["Elevación Promedio"] = gdf.geometry.apply(lambda geom: map_elevation(geom, elevation_data, tile_size, resolution))
 
-    lat_indices = slice(
-        int(tile_size[0] * (1 - (maxy / 15))),
-        int(tile_size[0] * (1 - (miny / 15)))
-    )
-    lon_indices = slice(
-        int(tile_size[1] * ((minx + 120) / 15)),
-        int(tile_size[1] * ((maxx + 120) / 15))
-    )
-
-    region_elevation = elevation_data[lat_indices, lon_indices]
-    avg_altitude = np.mean(region_elevation[region_elevation > 0]) / 1000  # Convertir a km
-    return avg_altitude
-
-# Calcular elevación y radiación por municipio
-gdf["Elevación Promedio"] = gdf.apply(lambda row: calculate_region_elevation(row, elevation_data, tile_size, resolution), axis=1)
-gdf["Radiación Promedio"] = gdf.apply(lambda row: calculate_annual_radiation(row.geometry.centroid.y, row["Elevación Promedio"]), axis=1)
-
-# Crear el mapa
+# Crear mapa interactivo
 mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
 
-# Agregar datos al mapa, usando NOM_MUN como clave
+# Agregar elevación como capa en el mapa
 folium.Choropleth(
     geo_data=gdf,
-    name="Radiación Solar",
+    name="Elevación",
     data=gdf,
-    columns=["NOM_MUN", "Radiación Promedio"],
+    columns=["NOM_MUN", "Elevación Promedio"],
     key_on="feature.properties.NOM_MUN",
-    fill_color="YlOrRd",
+    fill_color="YlGnBu",
     fill_opacity=0.7,
     line_opacity=0.2,
-    legend_name="Radiación Promedio Anual (W/m²)"
+    legend_name="Elevación Promedio (m)"
 ).add_to(mapa)
 
-# Mostrar el mapa en Streamlit
-st.title("Mapa de Radiación Solar Promedio en Colima")
+# Mostrar mapa en Streamlit
+st.title("Mapa de Elevación para Colima")
 st_folium(mapa, width=800, height=600)
