@@ -988,44 +988,17 @@ with tab2:
 
     
 ######################################33
-
 import numpy as np
 import re
+import folium
+import streamlit as st
+from streamlit_folium import st_folium
 
-# Resolución y tamaño del mosaico
+# Parámetros del mosaico ACE2
 resolution = 1 / 120  # 30 arc-seconds en grados
 tile_size = (1800, 1800)  # Número de filas y columnas por mosaico
 
-def parse_coordinates(filename):
-    """
-    Extrae las coordenadas de la esquina suroeste del mosaico a partir del nombre del archivo.
-    """
-    match = re.match(r"(\d+)([NS])(\d+)([EW])", filename)
-    if not match:
-        raise ValueError(f"Nombre de archivo no válido: {filename}")
-    
-    lat, lat_dir, lon, lon_dir = match.groups()
-    lat = int(lat) * (-1 if lat_dir == "S" else 1)
-    lon = int(lon) * (-1 if lon_dir == "W" else 1)
-    return lat, lon
-
-def calculate_global_bounds(files):
-    """
-    Calcula los límites globales de latitud y longitud a partir de los archivos ACE2.
-    """
-    latitudes = []
-    longitudes = []
-
-    for file in files:
-        sw_lat, sw_lon = parse_coordinates(file)
-        latitudes.append(sw_lat)
-        latitudes.append(sw_lat + 15)
-        longitudes.append(sw_lon)
-        longitudes.append(sw_lon + 15)
-
-    return min(latitudes), max(latitudes), min(longitudes), max(longitudes)
-
-# Archivos disponibles
+# Lista de archivos ACE2 disponibles
 ace2_files = [
     "00N090W_LAND_30S.ACE2",
     "00N105W_LAND_30S.ACE2",
@@ -1038,7 +1011,31 @@ ace2_files = [
     "30N120W_LAND_30S.ACE2",
 ]
 
+# Función para extraer las coordenadas de un archivo ACE2
+def parse_coordinates(filename):
+    match = re.match(r"(\d+)([NS])(\d+)([EW])", filename)
+    if not match:
+        raise ValueError(f"Nombre de archivo no válido: {filename}")
+    
+    lat, lat_dir, lon, lon_dir = match.groups()
+    lat = int(lat) * (-1 if lat_dir == "S" else 1)
+    lon = int(lon) * (-1 if lon_dir == "W" else 1)
+    return lat, lon
+
 # Calcular los límites globales
+def calculate_global_bounds(files):
+    latitudes = []
+    longitudes = []
+
+    for file in files:
+        sw_lat, sw_lon = parse_coordinates(file)
+        latitudes.append(sw_lat)
+        latitudes.append(sw_lat + 15)
+        longitudes.append(sw_lon)
+        longitudes.append(sw_lon + 15)
+
+    return min(latitudes), max(latitudes), min(longitudes), max(longitudes)
+
 min_lat, max_lat, min_lon, max_lon = calculate_global_bounds(ace2_files)
 
 # Crear la grilla global
@@ -1046,24 +1043,61 @@ rows = int((max_lat - min_lat) / resolution)
 cols = int((max_lon - min_lon) / resolution)
 global_elevation = np.full((rows, cols), -32768, dtype=np.float32)  # -32768 para valores nulos
 
+# Cargar datos en la grilla global
 def load_ace2_data(files, global_elevation, min_lat, min_lon):
-    """
-    Carga los mosaicos ACE2 en la grilla global.
-    """
     for file in files:
-        sw_lat, sw_lon = parse_coordinates(file)
-        data = np.fromfile(file, dtype=np.float32).reshape(tile_size)
+        try:
+            sw_lat, sw_lon = parse_coordinates(file)
+            data = np.fromfile(file, dtype=np.float32).reshape(tile_size)
 
-        # Calcular índices en la grilla global
-        lat_start = int((max_lat - sw_lat - 15) / resolution)
-        lat_end = lat_start + tile_size[0]
-        lon_start = int((sw_lon - min_lon) / resolution)
-        lon_end = lon_start + tile_size[1]
+            # Calcular índices en la grilla global
+            lat_start = int((max_lat - sw_lat - 15) / resolution)
+            lat_end = lat_start + tile_size[0]
+            lon_start = int((sw_lon - min_lon) / resolution)
+            lon_end = lon_start + tile_size[1]
 
-        # Insertar datos en la grilla global
-        global_elevation[lat_start:lat_end, lon_start:lon_end] = data
-
+            # Insertar datos en la grilla global
+            global_elevation[lat_start:lat_end, lon_start:lon_end] = data
+        except Exception as e:
+            st.error(f"Error al cargar el archivo {file}: {e}")
     return global_elevation
 
-# Cargar los datos en la grilla global
+# Cargar datos de elevación
 global_elevation = load_ace2_data(ace2_files, global_elevation, min_lat, min_lon)
+
+# Crear un mapa con Folium
+def create_map(global_elevation, min_lat, max_lat, min_lon, max_lon):
+    # Crear mapa centrado en México
+    mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
+
+    # Añadir elevaciones al mapa como una capa de color
+    lat_range = np.linspace(min_lat, max_lat, global_elevation.shape[0])
+    lon_range = np.linspace(min_lon, max_lon, global_elevation.shape[1])
+
+    for i, lat in enumerate(lat_range):
+        for j, lon in enumerate(lon_range):
+            elevation = global_elevation[i, j]
+            if elevation != -32768:  # Ignorar valores nulos
+                folium.CircleMarker(
+                    location=[lat, lon],
+                    radius=1,
+                    color="blue",
+                    fill=True,
+                    fill_opacity=0.5,
+                    fill_color="blue",
+                    popup=f"Elevación: {elevation} m"
+                ).add_to(mapa)
+    return mapa
+
+mapa = create_map(global_elevation, min_lat, max_lat, min_lon, max_lon)
+
+# Configuración de Streamlit
+st.title("Mapa de Elevación de México (ACE2)")
+st.write("""
+Este mapa muestra la elevación en metros sobre el nivel del mar en una grilla
+generada a partir de mosaicos ACE2.
+""")
+
+# Visualizar el mapa en Streamlit
+st_folium(mapa, width=800, height=600)
+
