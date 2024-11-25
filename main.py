@@ -1043,25 +1043,29 @@ rows = int((max_lat - min_lat) / resolution)
 cols = int((max_lon - min_lon) / resolution)
 global_elevation = np.full((rows, cols), -32768, dtype=np.float32)  # -32768 para valores nulos
 
-# Cargar datos en la grilla global
+# Tamaño correcto de los mosaicos ACE2
+tile_size = (1800, 1800)  # 1800 filas y columnas por mosaico
+
 def load_ace2_data(files, global_elevation, min_lat, min_lon):
     for file in files:
         try:
+            # Extraer coordenadas del mosaico
             sw_lat, sw_lon = parse_coordinates(file)
+            
+            # Leer el archivo ACE2
             data = np.fromfile(file, dtype=np.float32).reshape(tile_size)
-
+            
             # Calcular índices en la grilla global
             lat_start = int((max_lat - sw_lat - 15) / resolution)
             lat_end = lat_start + tile_size[0]
             lon_start = int((sw_lon - min_lon) / resolution)
             lon_end = lon_start + tile_size[1]
-
+            
             # Insertar datos en la grilla global
             global_elevation[lat_start:lat_end, lon_start:lon_end] = data
         except Exception as e:
             st.error(f"Error al cargar el archivo {file}: {e}")
     return global_elevation
-
 # Cargar datos de elevación
 global_elevation = load_ace2_data(ace2_files, global_elevation, min_lat, min_lon)
 
