@@ -1075,7 +1075,6 @@ st.pyplot(fig)
 
 
 import numpy as np
-import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -1083,6 +1082,9 @@ import streamlit as st
 tile_size = (1800, 1800)  # Dimensiones de cada mosaico
 resolution = 1 / 120  # Resolución de 30 arcsecs en grados
 tile_extent = 15  # Cada mosaico cubre 15x15 grados
+
+# Factor para reducir la resolución
+reduction_factor = 10  # Reducir la resolución 10 veces
 
 # Definir los archivos y sus posiciones
 files = {
@@ -1138,13 +1140,16 @@ for file, (sw_lat, sw_lon) in files.items():
     except Exception as e:
         st.error(f"Error al leer el archivo {file}: {e}")
 
-# Crear un gráfico interactivo con Plotly
-st.title("Mapa de Elevación de México")
-st.write("Este mapa muestra la elevación combinada de varios mosaicos ACE2.")
+# Reducir la resolución
+reduced_elevation = global_elevation[::reduction_factor, ::reduction_factor]
+latitudes = np.linspace(min_lat, max_lat, reduced_elevation.shape[0])
+longitudes = np.linspace(min_lon, max_lon, reduced_elevation.shape[1])
 
-elevation_masked = np.ma.masked_where(global_elevation == -32768, global_elevation)  # Mascara valores vacíos
-latitudes = np.linspace(min_lat, max_lat, global_elevation.shape[0])
-longitudes = np.linspace(min_lon, max_lon, global_elevation.shape[1])
+# Crear un gráfico interactivo con Plotly
+st.title("Mapa de Elevación de México (Resolución Reducida)")
+st.write(f"Este mapa muestra la elevación combinada de varios mosaicos ACE2 con una resolución reducida ({reduction_factor}x).")
+
+elevation_masked = np.ma.masked_where(reduced_elevation == -32768, reduced_elevation)  # Mascara valores vacíos
 
 fig = go.Figure(data=go.Heatmap(
     z=elevation_masked,
@@ -1155,7 +1160,7 @@ fig = go.Figure(data=go.Heatmap(
 ))
 
 fig.update_layout(
-    title="Elevación Topográfica de México",
+    title="Elevación Topográfica de México (Reducida)",
     xaxis_title="Longitud",
     yaxis_title="Latitud",
     xaxis=dict(scaleanchor="y"),  # Escala igual para x e y
