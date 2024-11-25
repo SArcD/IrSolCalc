@@ -1254,18 +1254,14 @@ st_folium(mapa, width=800, height=600)
 
 import os
 import numpy as np
-import geopandas as gpd
-import folium
-from streamlit_folium import st_folium
+import matplotlib.pyplot as plt
 import streamlit as st
 import gdown
 
 # Configuración inicial
 ace2_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"
-geojson_file = "Colima.json"
 ace2_file_path = "Colima_ACE2.ace2"
 tile_size = (6000, 6000)  # Dimensiones del archivo ACE2 de 9 arcseconds
-resolution = 1 / 400  # Resolución en grados
 
 # Descargar archivo ACE2 si no existe
 if not os.path.exists(ace2_file_path):
@@ -1284,50 +1280,24 @@ except Exception as e:
     st.error(f"Error al cargar el archivo ACE2: {e}")
     st.stop()
 
-# Leer archivo GeoJSON
-try:
-    gdf = gpd.read_file(geojson_file)
-    st.write("Archivo GeoJSON cargado correctamente.")
-except Exception as e:
-    st.error(f"Error al cargar el archivo GeoJSON: {e}")
-    st.stop()
+# Máscara para valores de elevación no válidos
+elevation_masked = np.ma.masked_where(elevation_data <= 0, elevation_data)
 
-# Extraer elevación promedio por punto dentro del estado de Colima
-def extract_elevation(lat, lon, elevation_data, tile_size, resolution):
-    """Extraer elevación para una latitud y longitud específica."""
-    row = int(tile_size[0] * (1 - (lat / 15)))
-    col = int(tile_size[1] * ((lon + 120) / 15))
-    if 0 <= row < tile_size[0] and 0 <= col < tile_size[1]:
-        return elevation_data[row, col]
-    return np.nan
-
-def map_elevation(geometry, elevation_data, tile_size, resolution):
-    """Mapear elevación dentro de una geometría."""
-    elevations = []
-    for x, y in geometry.exterior.coords:
-        elevation = extract_elevation(y, x, elevation_data, tile_size, resolution)
-        elevations.append(elevation)
-    return np.nanmean(elevations)
-
-# Agregar elevación a GeoDataFrame
-gdf["Elevación Promedio"] = gdf.geometry.apply(lambda geom: map_elevation(geom, elevation_data, tile_size, resolution))
-
-# Crear mapa interactivo
-mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
-
-# Agregar elevación como capa en el mapa
-folium.Choropleth(
-    geo_data=gdf,
-    name="Elevación",
-    data=gdf,
-    columns=["NOM_MUN", "Elevación Promedio"],
-    key_on="feature.properties.NOM_MUN",
-    fill_color="YlGnBu",
-    fill_opacity=0.7,
-    line_opacity=0.2,
-    legend_name="Elevación Promedio (m)"
-).add_to(mapa)
+# Visualizar el mosaico de elevación
+fig, ax = plt.subplots(figsize=(10, 8))
+cmap = plt.cm.terrain
+cmap.set_bad(color="white")  # Colorear valores inválidos en blanco
+elevation_plot = ax.imshow(
+    elevation_masked,
+    cmap=cmap,
+    origin="upper"
+)
+plt.colorbar(elevation_plot, ax=ax, label="Elevación (m)")
+ax.set_title("Mapa de Elevación de Colima")
+ax.set_xlabel("Longitud (grilla)")
+ax.set_ylabel("Latitud (grilla)")
 
 # Mostrar mapa en Streamlit
 st.title("Mapa de Elevación para Colima")
-st_folium(mapa, width=800, height=600)
+st.pyplot(fig)
+
