@@ -1627,6 +1627,7 @@ except Exception as e:
 
 # Asociar datos de nubosidad con cada municipio
 def get_ncloud(row, cloud_data):
+    """Obtener el porcentaje promedio de nubosidad anual (ANN) más cercano al municipio."""
     centroid = row.geometry.centroid
     closest_cloud = cloud_data.loc[
         ((cloud_data["LAT"] - centroid.y).abs() + (cloud_data["LON"] - centroid.x).abs()).idxmin()
