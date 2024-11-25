@@ -1252,84 +1252,89 @@ folium.Choropleth(
 st.title("Mapa Detallado de Radiación Solar Promedio en México")
 st_folium(mapa, width=800, height=600)
 
+import os
+import numpy as np
 import folium
 import geopandas as gpd
 import streamlit as st
 from streamlit_folium import st_folium
-import numpy as np
-import pandas as pd
-from folium.plugins import HeatMap
+import gdown
 
-# Parámetros para la radiación solar
+# Parámetros de radiación solar
 S0 = 1361  # Constante solar (W/m²)
 Ta = 0.75  # Transmisión atmosférica promedio
 k = 0.12   # Incremento de radiación por km de altitud
 
-# Función para calcular declinación solar
-def calculate_declination(day_of_year):
-    return 23.45 * np.sin(np.radians((360 / 365) * (day_of_year - 81)))
+# Descargar archivo ACE2 desde Google Drive
+ace2_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"
+ace2_file_path = "Colima_ACE2.ace2"
 
-# Función para calcular radiación solar anual
+# Descargar el archivo si no existe
+if not os.path.exists(ace2_file_path):
+    with st.spinner("Descargando datos de elevación..."):
+        gdown.download(ace2_url, ace2_file_path, quiet=False)
+
+# Leer el archivo ACE2
+def read_ace2(file_path, tile_size=(1800, 1800)):
+    """Leer archivo ACE2 y convertirlo a matriz NumPy."""
+    return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
+
+# Procesar datos de elevación
+try:
+    elevation_data = read_ace2(ace2_file_path)
+except Exception as e:
+    st.error(f"Error al procesar el archivo ACE2: {e}")
+    st.stop()
+
+# Eliminar el archivo después de leerlo para ahorrar espacio
+os.remove(ace2_file_path)
+
+# Función para calcular radiación promedio anual
 def calculate_annual_radiation(latitude, altitude):
     total_radiation = 0
     for day in range(1, 366):
-        declination = calculate_declination(day)
+        declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
         sin_lat_decl = np.sin(np.radians(latitude)) * np.sin(np.radians(declination))
         cos_lat_decl = np.cos(np.radians(latitude)) * np.cos(np.radians(declination))
         daily_radiation = S0 * Ta * (sin_lat_decl + cos_lat_decl) * (1 + k * altitude)
         total_radiation += max(0, daily_radiation)
-    return total_radiation / 365  # Promedio anual
+    return total_radiation / 365
 
-# Archivo GeoJSON para el mapa de México
-geojson_file = "mx.json"
-
-# Cargar los datos geográficos
+# Cargar archivo GeoJSON de Colima
+geojson_file = "Colima.json"
 try:
     gdf = gpd.read_file(geojson_file)
 except Exception as e:
     st.error(f"No se pudo cargar el archivo GeoJSON: {e}")
     st.stop()
 
-# Altitudes y nubosidad por estado (valores estimados)
-altitudes = {
-    "Aguascalientes": 1.88, "Baja California": 0.58, "Baja California Sur": 0.40,
-    "Campeche": 0.10, "Chiapas": 0.72, "Chihuahua": 1.49, "Ciudad de México": 2.24,
-    "Coahuila": 1.12, "Colima": 0.33, "Durango": 1.88, "Guanajuato": 1.96,
-    "Guerrero": 0.60, "Hidalgo": 1.90, "Jalisco": 1.56, "Estado de México": 2.57,
-    "Michoacán": 1.75, "Morelos": 1.66, "Nayarit": 0.70, "Nuevo León": 1.57,
-    "Oaxaca": 1.55, "Puebla": 2.13, "Querétaro": 1.82, "Quintana Roo": 0.10,
-    "San Luis Potosí": 1.86, "Sinaloa": 0.38, "Sonora": 0.61, "Tabasco": 0.10,
-    "Tamaulipas": 0.25, "Tlaxcala": 2.24, "Veracruz": 0.90, "Yucatán": 0.12, "Zacatecas": 2.19
-}
+# Calcular radiación promedio para Colima
+def calculate_colima_radiation(row):
+    state_shape = row.geometry
+    minx, miny, maxx, maxy = state_shape.bounds
+    lat_indices = slice(
+        int((1800 - (maxy - 15) / (1 / 120))),
+        int((1800 - (miny - 15) / (1 / 120)))
+    )
+    lon_indices = slice(
+        int(((minx + 105) / (1 / 120))),
+        int(((maxx + 105) / (1 / 120)))
+    )
+    state_elevation = elevation_data[lat_indices, lon_indices]
+    avg_altitude = np.mean(state_elevation[state_elevation > 0]) / 1000  # km
+    latitude = state_shape.centroid.y
+    return calculate_annual_radiation(latitude, avg_altitude)
 
-# Nubosidad promedio por estado (valores simulados)
-cloudiness = {
-    "Aguascalientes": 0.25, "Baja California": 0.10, "Baja California Sur": 0.15,
-    "Campeche": 0.30, "Chiapas": 0.50, "Chihuahua": 0.20, "Ciudad de México": 0.40,
-    "Coahuila": 0.18, "Colima": 0.35, "Durango": 0.22, "Guanajuato": 0.28,
-    "Guerrero": 0.38, "Hidalgo": 0.42, "Jalisco": 0.32, "Estado de México": 0.45,
-    "Michoacán": 0.36, "Morelos": 0.40, "Nayarit": 0.25, "Nuevo León": 0.15,
-    "Oaxaca": 0.50, "Puebla": 0.48, "Querétaro": 0.30, "Quintana Roo": 0.60,
-    "San Luis Potosí": 0.22, "Sinaloa": 0.20, "Sonora": 0.10, "Tabasco": 0.55,
-    "Tamaulipas": 0.20, "Tlaxcala": 0.40, "Veracruz": 0.50, "Yucatán": 0.45, "Zacatecas": 0.30
-}
+# Calcular radiación promedio por geometría
+gdf["Radiación Promedio"] = gdf.apply(calculate_colima_radiation, axis=1)
 
-# Calcular radiación para cada estado
-gdf["Altitud"] = gdf["name"].map(altitudes)
-gdf["Radiación"] = gdf.apply(
-    lambda row: calculate_annual_radiation(row.geometry.centroid.y, row["Altitud"]), axis=1
-)
-gdf["Nubosidad"] = gdf["name"].map(cloudiness)
-
-# Crear el mapa centrado en México
-mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
-
-# Agregar capa de radiación
+# Crear mapa interactivo
+mapa = folium.Map(location=[19.245, -103.725], zoom_start=8)
 folium.Choropleth(
     geo_data=gdf,
-    name="Radiación Solar Promedio Anual",
+    name="Radiación Solar",
     data=gdf,
-    columns=["name", "Radiación"],
+    columns=["name", "Radiación Promedio"],
     key_on="feature.properties.name",
     fill_color="YlOrRd",
     fill_opacity=0.7,
@@ -1337,14 +1342,7 @@ folium.Choropleth(
     legend_name="Radiación Promedio Anual (W/m²)"
 ).add_to(mapa)
 
-# Agregar capa de nubosidad como HeatMap
-cloud_points = [
-    [row.geometry.centroid.y, row.geometry.centroid.x, row["Nubosidad"]]
-    for _, row in gdf.iterrows() if not pd.isnull(row["Nubosidad"])
-]
-HeatMap(cloud_points, radius=15, blur=10, max_zoom=1).add_to(mapa)
-
-# Mostrar el mapa en Streamlit
-st.title("Mapa de Radiación Solar y Nubosidad en México")
-st.write("Este mapa muestra la radiación solar promedio anual y la nubosidad promedio estimada para cada estado de México.")
+# Mostrar mapa en Streamlit
+st.title("Mapa Detallado de Radiación Solar en Colima")
 st_folium(mapa, width=800, height=600)
+
