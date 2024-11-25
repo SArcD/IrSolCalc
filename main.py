@@ -1381,8 +1381,10 @@ except Exception as e:
 
 def calculate_municipality_radiation(row):
     bounds = row.geometry.bounds  # Obtener límites del municipio
-    min_lon, min_lat, max_lon, max_lat = bounds
+    #min_lon, min_lat, max_lon, max_lat = bounds
+    min_lat, max_lat, min_lon, max_lon = 15, 30, -105, -90
 
+    
     # Asegurarnos de que los índices estén dentro de los límites del mosaico
     lon_indices = slice(
         max(0, int((min_lon + 105) * tile_size[1] / 15)),
