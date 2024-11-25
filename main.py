@@ -994,76 +994,59 @@ import matplotlib.pyplot as plt
 import streamlit as st
 
 # Parámetros de los archivos ACE2
-ROWS = 1800
-COLUMNS = 1800
-DATA_TYPE = np.float32  # Datos en formato de 32 bits (float)
-OCEAN_VALUE = -500
-VOID_VALUE = -32768
+tile_size = (1800, 1800)  # Dimensiones de cada mosaico
+resolution = 1 / 120  # Resolución de 30 arcsecs en grados
+tile_extent = 15  # Cada mosaico cubre 15x15 grados
+
+# Definir los archivos y sus posiciones
+files = {
+    "15N090W_LAND_30S.ACE2": (15, -90),
+    "15N105W_LAND_30S.ACE2": (15, -105),
+    "15N120W_LAND_30S.ACE2": (15, -120),
+    "30N120W_LAND_30S.ACE2": (30, -120),
+}
+
+# Crear una grilla global para México
+min_lat, max_lat = 15, 33  # Límites aproximados de latitud para México
+min_lon, max_lon = -120, -86  # Límites aproximados de longitud para México
+lat_points = int((max_lat - min_lat) / resolution)
+lon_points = int((max_lon - min_lon) / resolution)
+global_elevation = np.full((lat_points, lon_points), -32768, dtype=np.float32)  # Usar el valor de vacío
 
 def read_ace2(file_path):
-    """
-    Lee un archivo ACE2 y lo convierte a una matriz numpy.
-    
-    Args:
-        file_path (str): Ruta del archivo ACE2.
-    
-    Returns:
-        np.ndarray: Matriz de datos de elevación.
-    """
+    """Leer un archivo ACE2 como una matriz NumPy."""
+    return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
+
+# Combinar los mosaicos en la grilla global
+for file, (sw_lat, sw_lon) in files.items():
     try:
-        with open(file_path, "rb") as f:
-            data = np.fromfile(f, dtype=DATA_TYPE).reshape((ROWS, COLUMNS))
-        # Reemplazar valores especiales por NaN
-        data[data == OCEAN_VALUE] = np.nan
-        data[data == VOID_VALUE] = np.nan
-        return data
-    except Exception as e:
-        raise ValueError(f"Error al leer el archivo {file_path}: {e}")
-
-def combine_ace2(files):
-    """
-    Combina archivos ACE2 en un mosaico único.
-    
-    Args:
-        files (list): Lista de archivos ACE2.
-    
-    Returns:
-        np.ndarray: Mosaico combinado de elevaciones.
-    """
-    combined_data = None
-    for file in files:
+        # Leer los datos del mosaico
         data = read_ace2(file)
-        if combined_data is None:
-            combined_data = data
-        else:
-            # Expandir y combinar mosaicos
-            combined_data = np.maximum(combined_data, data, where=~np.isnan(data))
-    return combined_data
+        # Calcular las posiciones en la grilla global
+        lat_start = int((sw_lat - min_lat) / resolution)
+        lat_end = lat_start + tile_size[0]
+        lon_start = int((sw_lon - min_lon) / resolution)
+        lon_end = lon_start + tile_size[1]
+        # Asignar los datos del mosaico
+        global_elevation[lat_start:lat_end, lon_start:lon_end] = data
+    except Exception as e:
+        st.error(f"Error al leer el archivo {file}: {e}")
 
-# Archivos ACE2 (sube tus propios archivos)
-ace2_files = [
-    "15N090W_LAND_30S.ACE2",
-    "15N105W_LAND_30S.ACE2",
-    "15N120W_LAND_30S.ACE2",
-    "30N120W_LAND_30S.ACE2"
-]
+# Visualizar el mapa en Streamlit
+st.title("Mapa de Elevación de México")
+st.write("Este mapa muestra la elevación combinada de varios mosaicos ACE2.")
 
-try:
-    # Leer y combinar datos
-    combined_elevation = combine_ace2(ace2_files)
+fig, ax = plt.subplots(figsize=(10, 8))
+elevation_masked = np.ma.masked_where(global_elevation == -32768, global_elevation)  # Mascara valores vacíos
+cmap = plt.cm.terrain
+cmap.set_bad(color="white")  # Colorear los valores vacíos en blanco
+elevation_plot = ax.imshow(elevation_masked, extent=(min_lon, max_lon, min_lat, max_lat), cmap=cmap)
+plt.colorbar(elevation_plot, ax=ax, label="Elevación (m)")
+ax.set_title("Elevación Topográfica de México")
+ax.set_xlabel("Longitud")
+ax.set_ylabel("Latitud")
 
-    # Visualización en Streamlit
-    st.title("Mapa de Elevación (Datos ACE2, 30 arcsecs)")
-    fig, ax = plt.subplots(figsize=(10, 8))
-    cax = ax.imshow(combined_elevation, cmap="terrain", origin="upper")
-    fig.colorbar(cax, ax=ax, label="Elevación (m)")
-    ax.set_title("Elevación Combinada para México")
-    ax.set_xlabel("Longitud")
-    ax.set_ylabel("Latitud")
-    st.pyplot(fig)
-except Exception as e:
-    st.error(f"Ocurrió un error: {e}")
-
+st.pyplot(fig)
 
    
 
