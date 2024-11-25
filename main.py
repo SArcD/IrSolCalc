@@ -1142,17 +1142,22 @@ for file, (sw_lat, sw_lon) in files.items():
 
 # Reducir la resolución
 reduced_elevation = global_elevation[::reduction_factor, ::reduction_factor]
-latitudes = np.linspace(min_lat, max_lat, reduced_elevation.shape[0])
+
+# Corregir valores inválidos
+reduced_elevation = np.ma.masked_where(
+    (reduced_elevation == -32768) | (reduced_elevation < 0), reduced_elevation
+)
+
+# Invertir el eje Y para mostrar correctamente
+latitudes = np.linspace(max_lat, min_lat, reduced_elevation.shape[0])
 longitudes = np.linspace(min_lon, max_lon, reduced_elevation.shape[1])
 
 # Crear un gráfico interactivo con Plotly
 st.title("Mapa de Elevación de México (Resolución Reducida)")
 st.write(f"Este mapa muestra la elevación combinada de varios mosaicos ACE2 con una resolución reducida ({reduction_factor}x).")
 
-elevation_masked = np.ma.masked_where(reduced_elevation == -32768, reduced_elevation)  # Mascara valores vacíos
-
 fig = go.Figure(data=go.Heatmap(
-    z=elevation_masked,
+    z=reduced_elevation,
     x=longitudes,
     y=latitudes,
     colorscale="viridis",  # Escala de colores válida para Plotly
@@ -1160,7 +1165,7 @@ fig = go.Figure(data=go.Heatmap(
 ))
 
 fig.update_layout(
-    title="Elevación Topográfica de México (Reducida)",
+    title="Elevación Topográfica de México (Corregido)",
     xaxis_title="Longitud",
     yaxis_title="Latitud",
     xaxis=dict(scaleanchor="y"),  # Escala igual para x e y
