@@ -1000,14 +1000,19 @@ tile_extent = 15  # Cada mosaico cubre 15x15 grados
 
 # Definir los archivos y sus posiciones
 files = {
+    "00N090W_LAND_30S.ACE2": (0, -90),
+    "00N105W_LAND_30S.ACE2": (0, -105),
+    "00N120W_LAND_30S.ACE2": (0, -120),
     "15N090W_LAND_30S.ACE2": (15, -90),
     "15N105W_LAND_30S.ACE2": (15, -105),
     "15N120W_LAND_30S.ACE2": (15, -120),
+    "30N090W_LAND_30S.ACE2": (30, -90),
+    "30N105W_LAND_30S.ACE2": (30, -105),
     "30N120W_LAND_30S.ACE2": (30, -120),
 }
 
 # Crear una grilla global para México
-min_lat, max_lat = 15, 33  # Límites aproximados de latitud para México
+min_lat, max_lat = 0, 33  # Límites aproximados de latitud para México
 min_lon, max_lon = -120, -86  # Límites aproximados de longitud para México
 lat_points = int((max_lat - min_lat) / resolution)
 lon_points = int((max_lon - min_lon) / resolution)
@@ -1040,13 +1045,19 @@ fig, ax = plt.subplots(figsize=(10, 8))
 elevation_masked = np.ma.masked_where(global_elevation == -32768, global_elevation)  # Mascara valores vacíos
 cmap = plt.cm.terrain
 cmap.set_bad(color="white")  # Colorear los valores vacíos en blanco
-elevation_plot = ax.imshow(elevation_masked, extent=(min_lon, max_lon, min_lat, max_lat), cmap=cmap)
+elevation_plot = ax.imshow(
+    elevation_masked,
+    extent=(min_lon, max_lon, min_lat, max_lat),
+    cmap=cmap,
+    origin="upper"
+)
 plt.colorbar(elevation_plot, ax=ax, label="Elevación (m)")
 ax.set_title("Elevación Topográfica de México")
 ax.set_xlabel("Longitud")
 ax.set_ylabel("Latitud")
 
 st.pyplot(fig)
+
 
    
 
