@@ -1462,7 +1462,7 @@ import gdown
 file_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"  # URL del archivo para Colima
 file_path = "Colima_ACE2.ace2"  # Nombre local del archivo
 tile_size = (6000, 6000)  # Dimensiones del mosaico ACE2 (9 arcseconds)
-geojson_path = "colima.json"  # Archivo GeoJSON de Colima
+geojson_path = "coolima.json"  # Archivo GeoJSON de Colima
 
 # Descargar el archivo ACE2 si no existe
 if not os.path.exists(file_path):
