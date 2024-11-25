@@ -1073,76 +1073,76 @@ ax.set_ylabel("Latitud")
 st.pyplot(fig)
 
 
-import numpy as np
-import plotly.graph_objects as go
-import streamlit as st
+#import numpy as np
+#import plotly.graph_objects as go
+#import streamlit as st
 
 # Parámetros de los archivos ACE2
-tile_size = (1800, 1800)  # Dimensiones de cada mosaico
-resolution = 1 / 120  # Resolución de 30 arcsecs en grados
-tile_extent = 15  # Cada mosaico cubre 15x15 grados
+#tile_size = (1800, 1800)  # Dimensiones de cada mosaico
+#resolution = 1 / 120  # Resolución de 30 arcsecs en grados
+#tile_extent = 15  # Cada mosaico cubre 15x15 grados
 
 # Definir los archivos y sus posiciones
-files = {
-    "00N090W_LAND_30S.ACE2": (0, -90),
-    "00N105W_LAND_30S.ACE2": (0, -105),
-    "00N120W_LAND_30S.ACE2": (0, -120),
-    "15N090W_LAND_30S.ACE2": (15, -90),
-    "15N105W_LAND_30S.ACE2": (15, -105),
-    "15N120W_LAND_30S.ACE2": (15, -120),
-    "30N090W_LAND_30S.ACE2": (30, -90),
-    "30N105W_LAND_30S.ACE2": (30, -105),
-    "30N120W_LAND_30S.ACE2": (30, -120),
-}
+#files = {
+#    "00N090W_LAND_30S.ACE2": (0, -90),
+#    "00N105W_LAND_30S.ACE2": (0, -105),
+#    "00N120W_LAND_30S.ACE2": (0, -120),
+#    "15N090W_LAND_30S.ACE2": (15, -90),
+#    "15N105W_LAND_30S.ACE2": (15, -105),
+#    "15N120W_LAND_30S.ACE2": (15, -120),
+#    "30N090W_LAND_30S.ACE2": (30, -90),
+#    "30N105W_LAND_30S.ACE2": (30, -105),
+#    "30N120W_LAND_30S.ACE2": (30, -120),
+#}
 
-def read_ace2(file_path):
-    """Leer un archivo ACE2 como una matriz NumPy."""
-    return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
+#def read_ace2(file_path):
+#    """Leer un archivo ACE2 como una matriz NumPy."""
+#    return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
 
-def plot_tile(data, sw_lat, sw_lon):
-    """Graficar un mosaico ACE2 con Plotly."""
-    latitudes = np.linspace(sw_lat + tile_extent, sw_lat, data.shape[0])
-    longitudes = np.linspace(sw_lon, sw_lon + tile_extent, data.shape[1])
-    masked_data = np.ma.masked_where(data <= 0, data)  # Mascara valores no válidos
+#def plot_tile(data, sw_lat, sw_lon):
+#    """Graficar un mosaico ACE2 con Plotly."""
+#    latitudes = np.linspace(sw_lat + tile_extent, sw_lat, data.shape[0])
+#    longitudes = np.linspace(sw_lon, sw_lon + tile_extent, data.shape[1])
+#    masked_data = np.ma.masked_where(data <= 0, data)  # Mascara valores no válidos
 
-    # Calcular el rango de valores positivos
-    valid_min = masked_data.min()
-    valid_max = masked_data.max()
+#    # Calcular el rango de valores positivos
+#    valid_min = masked_data.min()
+#    valid_max = masked_data.max()
 
-    fig = go.Figure(data=go.Heatmap(
-        z=masked_data,
-        x=longitudes,
-        y=latitudes,
-        colorscale="viridis",
-        zmin=valid_min,  # Límite inferior de la escala
-        zmax=valid_max,  # Límite superior de la escala
-        colorbar=dict(title="Elevación (m)")
-    ))
-    fig.update_layout(
-        title=f"Mosaico ({sw_lat}°, {sw_lon}°)",
-        xaxis_title="Longitud",
-        yaxis_title="Latitud",
-        height=700
-    )
-    return fig
+#    fig = go.Figure(data=go.Heatmap(
+#        z=masked_data,
+#        x=longitudes,
+#        y=latitudes,
+#        colorscale="viridis",
+#        zmin=valid_min,  # Límite inferior de la escala
+#        zmax=valid_max,  # Límite superior de la escala
+#        colorbar=dict(title="Elevación (m)")
+#    ))
+#    fig.update_layout(
+#        title=f"Mosaico ({sw_lat}°, {sw_lon}°)",
+#        xaxis_title="Longitud",
+#        yaxis_title="Latitud",
+#        height=700
+#    )
+#    return fig
 
-# Crear una interfaz en Streamlit
-st.title("Visualización de Mosaicos de Elevación ACE2")
-st.write("Selecciona un mosaico para visualizar su elevación a máxima resolución.")
+## Crear una interfaz en Streamlit
+#st.title("Visualización de Mosaicos de Elevación ACE2")
+#st.write("Selecciona un mosaico para visualizar su elevación a máxima resolución.")
 
 # Menú desplegable para seleccionar un mosaico
-selected_file = st.selectbox("Selecciona un mosaico:", list(files.keys()))
+#selected_file = st.selectbox("Selecciona un mosaico:", list(files.keys()))
 
-if selected_file:
-    # Cargar y graficar el mosaico seleccionado
-    sw_lat, sw_lon = files[selected_file]
-    try:
-        tile_data = read_ace2(selected_file)
-        st.write(f"Visualizando el mosaico: **{selected_file}**")
-        fig = plot_tile(tile_data, sw_lat, sw_lon)
-        st.plotly_chart(fig, use_container_width=True)
-    except Exception as e:
-        st.error(f"Error al cargar el mosaico {selected_file}: {e}")
+#if selected_file:
+#    # Cargar y graficar el mosaico seleccionado
+#    sw_lat, sw_lon = files[selected_file]
+#    try:
+#        tile_data = read_ace2(selected_file)
+#        st.write(f"Visualizando el mosaico: **{selected_file}**")
+#        fig = plot_tile(tile_data, sw_lat, sw_lon)
+#        st.plotly_chart(fig, use_container_width=True)
+#    except Exception as e:
+#        st.error(f"Error al cargar el mosaico {selected_file}: {e}")
 
 import numpy as np
 import folium
@@ -1252,7 +1252,6 @@ folium.Choropleth(
 st.title("Mapa Detallado de Radiación Solar Promedio en México")
 st_folium(mapa, width=800, height=600)
 
-import os
 import numpy as np
 import folium
 import geopandas as gpd
@@ -1260,47 +1259,29 @@ import streamlit as st
 from streamlit_folium import st_folium
 import gdown
 
-# Parámetros de radiación solar
-S0 = 1361  # Constante solar (W/m²)
-Ta = 0.75  # Transmisión atmosférica promedio
-k = 0.12   # Incremento de radiación por km de altitud
-
-# Descargar archivo ACE2 desde Google Drive
+# Descargar el archivo ACE2 si no está disponible
 ace2_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"
 ace2_file_path = "Colima_ACE2.ace2"
-
-# Descargar el archivo si no existe
 if not os.path.exists(ace2_file_path):
     with st.spinner("Descargando datos de elevación..."):
         gdown.download(ace2_url, ace2_file_path, quiet=False)
 
-# Leer el archivo ACE2
-def read_ace2(file_path, tile_size=(1800, 1800)):
-    """Leer archivo ACE2 y convertirlo a matriz NumPy."""
+# Parámetros para archivos ACE2 (9 arc seconds)
+tile_size = (6000, 6000)  # Dimensiones de cada mosaico
+resolution = 1 / (3600 / 9)  # Resolución de 9 arcsecs en grados
+tile_extent = 15  # Cada mosaico cubre 15x15 grados
+
+# Leer archivo ACE2
+def read_ace2(file_path, tile_size):
     return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
 
-# Procesar datos de elevación
 try:
-    elevation_data = read_ace2(ace2_file_path)
+    elevation_data = read_ace2(ace2_file_path, tile_size)
 except Exception as e:
     st.error(f"Error al procesar el archivo ACE2: {e}")
     st.stop()
 
-# Eliminar el archivo después de leerlo para ahorrar espacio
-os.remove(ace2_file_path)
-
-# Función para calcular radiación promedio anual
-def calculate_annual_radiation(latitude, altitude):
-    total_radiation = 0
-    for day in range(1, 366):
-        declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
-        sin_lat_decl = np.sin(np.radians(latitude)) * np.sin(np.radians(declination))
-        cos_lat_decl = np.cos(np.radians(latitude)) * np.cos(np.radians(declination))
-        daily_radiation = S0 * Ta * (sin_lat_decl + cos_lat_decl) * (1 + k * altitude)
-        total_radiation += max(0, daily_radiation)
-    return total_radiation / 365
-
-# Cargar archivo GeoJSON de Colima
+# Cargar archivo GeoJSON
 geojson_file = "Colima.json"
 try:
     gdf = gpd.read_file(geojson_file)
@@ -1308,28 +1289,43 @@ except Exception as e:
     st.error(f"No se pudo cargar el archivo GeoJSON: {e}")
     st.stop()
 
-# Calcular radiación promedio para Colima
-def calculate_colima_radiation(row):
-    state_shape = row.geometry
-    minx, miny, maxx, maxy = state_shape.bounds
+# Parámetros de radiación solar
+S0 = 1361  # Constante solar (W/m²)
+Ta = 0.75  # Transmisión atmosférica promedio
+k = 0.12   # Incremento de radiación por km de altitud
+
+# Calcular radiación para cada polígono
+def calculate_radiation_for_polygon(polygon, elevation_data, resolution):
+    minx, miny, maxx, maxy = polygon.bounds
     lat_indices = slice(
-        int((1800 - (maxy - 15) / (1 / 120))),
-        int((1800 - (miny - 15) / (1 / 120)))
+        int((15 - maxy) / resolution),  # 15 es la latitud norte del mosaico
+        int((15 - miny) / resolution)
     )
     lon_indices = slice(
-        int(((minx + 105) / (1 / 120))),
-        int(((maxx + 105) / (1 / 120)))
+        int((minx + 120) / resolution),  # -120 es la longitud oeste del mosaico
+        int((maxx + 120) / resolution)
     )
-    state_elevation = elevation_data[lat_indices, lon_indices]
-    avg_altitude = np.mean(state_elevation[state_elevation > 0]) / 1000  # km
-    latitude = state_shape.centroid.y
-    return calculate_annual_radiation(latitude, avg_altitude)
+    # Extraer elevación
+    polygon_elevation = elevation_data[lat_indices, lon_indices]
+    avg_altitude = np.mean(polygon_elevation[polygon_elevation > 0]) / 1000  # Convertir a km
+    latitude = polygon.centroid.y
+    # Calcular radiación anual
+    total_radiation = 0
+    for day in range(1, 366):
+        declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
+        sin_lat_decl = np.sin(np.radians(latitude)) * np.sin(np.radians(declination))
+        cos_lat_decl = np.cos(np.radians(latitude)) * np.cos(np.radians(declination))
+        daily_radiation = S0 * Ta * (sin_lat_decl + cos_lat_decl) * (1 + k * avg_altitude)
+        total_radiation += max(0, daily_radiation)
+    return total_radiation / 365
 
-# Calcular radiación promedio por geometría
-gdf["Radiación Promedio"] = gdf.apply(calculate_colima_radiation, axis=1)
+# Calcular radiación promedio para cada polígono
+gdf["Radiación Promedio"] = gdf.geometry.apply(
+    lambda geom: calculate_radiation_for_polygon(geom, elevation_data, resolution)
+)
 
-# Crear mapa interactivo
-mapa = folium.Map(location=[19.245, -103.725], zoom_start=8)
+# Crear mapa
+mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
 folium.Choropleth(
     geo_data=gdf,
     name="Radiación Solar",
@@ -1343,6 +1339,5 @@ folium.Choropleth(
 ).add_to(mapa)
 
 # Mostrar mapa en Streamlit
-st.title("Mapa Detallado de Radiación Solar en Colima")
+st.title("Radiación Solar Promedio en Colima")
 st_folium(mapa, width=800, height=600)
-
