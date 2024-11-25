@@ -1012,8 +1012,8 @@ files = {
 }
 
 # Crear una grilla global para México
-min_lat, max_lat = 0, 33  # Límites aproximados de latitud para México
-min_lon, max_lon = -120, -86  # Límites aproximados de longitud para México
+min_lat, max_lat = 0, 40  # Límites aproximados de latitud para México
+min_lon, max_lon = -120, -70  # Límites aproximados de longitud para México
 lat_points = int((max_lat - min_lat) / resolution)
 lon_points = int((max_lon - min_lon) / resolution)
 global_elevation = np.full((lat_points, lon_points), -32768, dtype=np.float32)  # Usar el valor de vacío
