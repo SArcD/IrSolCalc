@@ -1027,11 +1027,26 @@ for file, (sw_lat, sw_lon) in files.items():
     try:
         # Leer los datos del mosaico
         data = read_ace2(file)
+        
+        # Validar dimensiones del archivo
+        if data.shape != tile_size:
+            st.warning(f"Dimensiones inesperadas en el archivo {file}")
+            continue
+
         # Calcular las posiciones en la grilla global
-        lat_start = int((sw_lat - min_lat) / resolution)
+        lat_start = int((max_lat - sw_lat) / resolution) - tile_size[0]
         lat_end = lat_start + tile_size[0]
         lon_start = int((sw_lon - min_lon) / resolution)
         lon_end = lon_start + tile_size[1]
+
+        # Verificar si las coordenadas encajan correctamente
+        if (
+            lat_start < 0 or lat_end > global_elevation.shape[0] or
+            lon_start < 0 or lon_end > global_elevation.shape[1]
+        ):
+            st.warning(f"Archivo {file} fuera de los límites de la grilla")
+            continue
+
         # Asignar los datos del mosaico
         global_elevation[lat_start:lat_end, lon_start:lon_end] = data
     except Exception as e:
@@ -1057,7 +1072,3 @@ ax.set_xlabel("Longitud")
 ax.set_ylabel("Latitud")
 
 st.pyplot(fig)
-
-
-   
-
