@@ -1281,7 +1281,10 @@ def read_ace2(file_path, tile_size):
 elevation_data_combined = None
 combined_extent = [float("inf"), float("-inf"), float("inf"), float("-inf")]
 
-for mosaic in mosaic_files:
+# Ordenar mosaicos por longitud mínima (para garantizar el orden correcto)
+mosaic_files_sorted = sorted(mosaic_files, key=lambda x: x["bounds"][0])
+
+for mosaic in mosaic_files_sorted:
     # Descargar archivo si no existe
     if not os.path.exists(mosaic["path"]):
         st.write(f"Descargando el archivo ACE2 desde {mosaic['url']}...")
