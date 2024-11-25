@@ -992,40 +992,61 @@ with tab2:
         import numpy as np
         import matplotlib.pyplot as plt
         import streamlit as st
+        import os
 
-        def read_ace2(file_path, shape=(1201, 1201)):
+        # Parámetros iniciales
+        DATA_TYPE = np.int16  # Tipo de datos: enteros de 16 bits
+        POSSIBLE_SHAPES = [(1800, 1800), (3600, 3600)]  # Tamaños posibles
+
+        def read_ace2(file_path, shape):
             """
-            Lee un archivo ACE2 y lo convierte en un arreglo de numpy.
+            Lee un archivo ACE2 y convierte a una matriz numpy.
     
             Args:
-                file_path (str): Ruta al archivo ACE2.
-                shape (tuple): Forma de la grilla (por defecto 1201x1201).
+                file_path (str): Ruta del archivo ACE2.
+                shape (tuple): Dimensiones de la grilla.
     
             Returns:
                 np.ndarray: Datos de elevación.
             """
-            with open(file_path, "rb") as f:
-                data = np.fromfile(f, dtype=np.int16).reshape(shape)
-            return data
+            try:
+                with open(file_path, "rb") as f:
+                    data = np.fromfile(f, dtype=DATA_TYPE)
+                if data.size != shape[0] * shape[1]:
+                    raise ValueError(f"Tamaño inesperado: {data.size}. No coincide con la grilla {shape}.")
+                return data.reshape(shape)
+            except Exception as e:
+                raise ValueError(f"Error al leer el archivo {file_path}: {e}")
 
-        def combine_ace2(files, grid_shape=(1201, 1201)):
+        def combine_ace2(files, shapes):
             """
-            Combina múltiples archivos ACE2 en una sola matriz.
+            Combina archivos ACE2 en un mosaico.
     
             Args:
-                files (list): Lista de rutas a los archivos ACE2.
-                grid_shape (tuple): Forma de la grilla por archivo.
+                files (list): Lista de archivos.
+                shapes (list): Lista de posibles tamaños de grilla.
     
             Returns:
-                np.ndarray: Matriz combinada de elevaciones.
+                np.ndarray: Elevaciones combinadas.
             """
             combined_data = None
             for file in files:
-                data = read_ace2(file, shape=grid_shape)
+                success = False
+                for shape in shapes:
+                    try:
+                        data = read_ace2(file, shape)
+                        success = True
+                        break
+                    except ValueError:
+                        continue
+                if not success:
+                    raise ValueError(f"No se pudo leer el archivo {file} con ninguna de las formas posibles.")
+        
+                # Combinar
                 if combined_data is None:
                     combined_data = data
                 else:
-                    combined_data = np.maximum(combined_data, data)
+                    combined_data = np.maximum(combined_data, data)  # Tomar valores máximos
             return combined_data
 
         # Archivos ACE2
@@ -1036,18 +1057,22 @@ with tab2:
             "30N120W_LAND_30S.ACE2"
         ]
 
-        # Combinar los datos
-        combined_elevation = combine_ace2(ace2_files)
+        try:
+            # Leer y combinar
+            combined_elevation = combine_ace2(ace2_files, shapes=POSSIBLE_SHAPES)
+    
+            # Visualización en Streamlit
+            st.title("Mapa de Elevación (Archivos ACE2, 30 arcsecs)")
+            fig, ax = plt.subplots(figsize=(10, 8))
+            cax = ax.imshow(combined_elevation, cmap="terrain")
+            fig.colorbar(cax, ax=ax, label="Elevación (m)")
+            ax.set_title("Elevación Combinada")
+            ax.set_xlabel("Longitud")
+            ax.set_ylabel("Latitud")
+            st.pyplot(fig)
+        except Exception as e:
+            st.error(f"Ocurrió un error: {e}")
 
-        # Visualizar con Streamlit
-        st.title("Mapa de Elevación de México")
-        fig, ax = plt.subplots(figsize=(10, 8))
-        cax = ax.imshow(combined_elevation, cmap="terrain")
-        fig.colorbar(cax, ax=ax, label="Elevación (m)")
-        ax.set_title("Elevación de México")
-        ax.set_xlabel("Longitud")
-        ax.set_ylabel("Latitud")
-        st.pyplot(fig)
 
    
 
