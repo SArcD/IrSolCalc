@@ -1072,3 +1072,93 @@ ax.set_ylabel("Latitud")
 
 st.pyplot(fig)
 
+
+
+import numpy as np
+import plotly.graph_objects as go
+import streamlit as st
+
+# Parámetros de los archivos ACE2
+tile_size = (1800, 1800)  # Dimensiones de cada mosaico
+resolution = 1 / 120  # Resolución de 30 arcsecs en grados
+tile_extent = 15  # Cada mosaico cubre 15x15 grados
+
+# Definir los archivos y sus posiciones
+files = {
+    "00N090W_LAND_30S.ACE2": (0, -90),
+    "00N105W_LAND_30S.ACE2": (0, -105),
+    "00N120W_LAND_30S.ACE2": (0, -120),
+    "15N090W_LAND_30S.ACE2": (15, -90),
+    "15N105W_LAND_30S.ACE2": (15, -105),
+    "15N120W_LAND_30S.ACE2": (15, -120),
+    "30N090W_LAND_30S.ACE2": (30, -90),
+    "30N105W_LAND_30S.ACE2": (30, -105),
+    "30N120W_LAND_30S.ACE2": (30, -120),
+}
+
+# Crear una grilla global para México
+min_lat, max_lat = 0, 45  # Límites aproximados de latitud para México
+min_lon, max_lon = -120, -75  # Límites aproximados de longitud para México
+lat_points = int((max_lat - min_lat) / resolution)
+lon_points = int((max_lon - min_lon) / resolution)
+global_elevation = np.full((lat_points, lon_points), -32768, dtype=np.float32)  # Usar el valor de vacío
+
+def read_ace2(file_path):
+    """Leer un archivo ACE2 como una matriz NumPy."""
+    return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
+
+# Combinar los mosaicos en la grilla global
+for file, (sw_lat, sw_lon) in files.items():
+    try:
+        # Leer los datos del mosaico
+        data = read_ace2(file)
+        
+        # Validar dimensiones del archivo
+        if data.shape != tile_size:
+            st.warning(f"Dimensiones inesperadas en el archivo {file}")
+            continue
+
+        # Calcular las posiciones en la grilla global
+        lat_start = int((max_lat - sw_lat - tile_extent) / resolution)
+        lat_end = lat_start + tile_size[0]
+        lon_start = int((sw_lon - min_lon) / resolution)
+        lon_end = lon_start + tile_size[1]
+
+        # Verificar si las coordenadas encajan correctamente
+        if (
+            lat_start < 0 or lat_end > global_elevation.shape[0] or
+            lon_start < 0 or lon_end > global_elevation.shape[1]
+        ):
+            st.warning(f"Archivo {file} fuera de los límites de la grilla")
+            continue
+
+        # Asignar los datos del mosaico
+        global_elevation[lat_start:lat_end, lon_start:lon_end] = data
+    except Exception as e:
+        st.error(f"Error al leer el archivo {file}: {e}")
+
+# Crear un gráfico interactivo con Plotly
+st.title("Mapa de Elevación de México")
+st.write("Este mapa muestra la elevación combinada de varios mosaicos ACE2.")
+
+elevation_masked = np.ma.masked_where(global_elevation == -32768, global_elevation)  # Mascara valores vacíos
+latitudes = np.linspace(min_lat, max_lat, global_elevation.shape[0])
+longitudes = np.linspace(min_lon, max_lon, global_elevation.shape[1])
+
+fig = go.Figure(data=go.Heatmap(
+    z=elevation_masked,
+    x=longitudes,
+    y=latitudes,
+    colorscale="terrain",
+    colorbar=dict(title="Elevación (m)")
+))
+
+fig.update_layout(
+    title="Elevación Topográfica de México",
+    xaxis_title="Longitud",
+    yaxis_title="Latitud",
+    xaxis=dict(scaleanchor="y"),  # Escala igual para x e y
+    height=700
+)
+
+st.plotly_chart(fig, use_container_width=True)
