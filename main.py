@@ -1362,22 +1362,46 @@ except Exception as e:
     st.stop()
 
 # Calcular elevación promedio y radiación para cada municipio
+#def calculate_municipality_radiation(row):
+#    bounds = row.geometry.bounds  # Obtener límites del municipio
+#    min_lon, min_lat, max_lon, max_lat = bounds
+#    lon_indices = slice(
+#        int((min_lon + 105) * tile_size[1] / 15),
+#        int((max_lon + 105) * tile_size[1] / 15)
+#    )
+#    lat_indices = slice(
+#        int((20 - max_lat) * tile_size[0] / 15),
+#        int((20 - min_lat) * tile_size[0] / 15)
+#    )
+#    # Extraer elevación del mosaico
+#    municipality_elevation = elevation_data[lat_indices, lon_indices]
+#    avg_altitude = np.mean(municipality_elevation[municipality_elevation > 0]) / 1000  # En km
+#    latitude = row.geometry.centroid.y
+#    return calculate_annual_radiation(latitude, avg_altitude)
+
 def calculate_municipality_radiation(row):
     bounds = row.geometry.bounds  # Obtener límites del municipio
     min_lon, min_lat, max_lon, max_lat = bounds
+
+    # Asegurarnos de que los índices estén dentro de los límites del mosaico
     lon_indices = slice(
-        int((min_lon + 105) * tile_size[1] / 15),
-        int((max_lon + 105) * tile_size[1] / 15)
+        max(0, int((min_lon + 105) * tile_size[1] / 15)),
+        min(tile_size[1], int((max_lon + 105) * tile_size[1] / 15))
     )
     lat_indices = slice(
-        int((20 - max_lat) * tile_size[0] / 15),
-        int((20 - min_lat) * tile_size[0] / 15)
+        max(0, int((20 - max_lat) * tile_size[0] / 15)),
+        min(tile_size[0], int((20 - min_lat) * tile_size[0] / 15))
     )
+
     # Extraer elevación del mosaico
     municipality_elevation = elevation_data[lat_indices, lon_indices]
+    if municipality_elevation[municipality_elevation > 0].size == 0:
+        return 0  # Valor por defecto en caso de datos vacíos
+
     avg_altitude = np.mean(municipality_elevation[municipality_elevation > 0]) / 1000  # En km
     latitude = row.geometry.centroid.y
     return calculate_annual_radiation(latitude, avg_altitude)
+
 
 gdf["Radiación Promedio"] = gdf.apply(calculate_municipality_radiation, axis=1)
 
