@@ -989,92 +989,65 @@ with tab2:
     
 ######################################33
 
-        import xml.etree.ElementTree as ET
+        import numpy as np
+        import matplotlib.pyplot as plt
         import streamlit as st
-        import pandas as pd
-        import folium
-        from streamlit_folium import st_folium
 
-        # Diccionario de mapeo de colores a altitudes    
-        color_to_altitude = {
-            "#c3a76b": 2500,  # Marrón claro, +2500m
-            "#f4e1c1": 500,   # Beige, +500m
-            "#e0f7ff": 0      # Azul claro, nivel del mar
-        }
+        def read_ace2(file_path, shape=(1201, 1201)):
+            """
+            Lee un archivo ACE2 y lo convierte en un arreglo de numpy.
+    
+            Args:
+                file_path (str): Ruta al archivo ACE2.
+                shape (tuple): Forma de la grilla (por defecto 1201x1201).
+    
+            Returns:
+                np.ndarray: Datos de elevación.
+            """
+            with open(file_path, "rb") as f:
+                data = np.fromfile(f, dtype=np.int16).reshape(shape)
+            return data
 
-        # Título de la aplicación
-        st.title("Visualización de Altitudes desde un Archivo SVG")
+        def combine_ace2(files, grid_shape=(1201, 1201)):
+            """
+            Combina múltiples archivos ACE2 en una sola matriz.
+    
+            Args:
+                files (list): Lista de rutas a los archivos ACE2.
+                grid_shape (tuple): Forma de la grilla por archivo.
+    
+            Returns:
+                np.ndarray: Matriz combinada de elevaciones.
+            """
+            combined_data = None
+            for file in files:
+                data = read_ace2(file, shape=grid_shape)
+                if combined_data is None:
+                    combined_data = data
+                else:
+                    combined_data = np.maximum(combined_data, data)
+            return combined_data
 
-        # Cargar el archivo SVG
-        uploaded_file = st.file_uploader("Sube un archivo SVG del mapa de México", type="svg")
+        # Archivos ACE2
+        ace2_files = [
+            "15N090W_LAND_30S.ACE2",
+            "15N105W_LAND_30S.ACE2",
+            "15N120W_LAND_30S.ACE2",
+            "30N120W_LAND_30S.ACE2"
+        ]
 
-        if uploaded_file is not None:
-            try:
-                # Parsear el archivo SVG
-                tree = ET.parse(uploaded_file)
-                root = tree.getroot()
-        
-                # Lista para almacenar datos extraídos
-                altitude_data = []
+        # Combinar los datos
+        combined_elevation = combine_ace2(ace2_files)
 
-                # Iterar sobre los elementos del archivo SVG
-                for element in root.iter():
-                    label = element.attrib.get("inkscape:label", None)
-                    style = element.attrib.get("style", None)
-                    transform = element.attrib.get("transform", None)
-            
-                    if label and style:
-                        # Extraer color del estilo
-                        color = style.split("fill:")[1].split(";")[0]
-                        # Mapear color a altitud
-                        altitude = color_to_altitude.get(color, None)
-                
-                        # Almacenar los datos extraídos
-                        altitude_data.append({
-                            "Etiqueta": label,
-                            "Color": color,
-                            "Altitud (m)": altitude,
-                            "Transformación": transform
-                        })
-        
-                # Convertir los datos a un DataFrame
-                df = pd.DataFrame(altitude_data)
-
-                # Mostrar el DataFrame en Streamlit
-                st.subheader("Datos Extraídos del Archivo SVG")
-                st.dataframe(df)
-
-                # Crear un mapa interactivo con Folium
-                mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
-
-                # Agregar marcadores para cada región
-                for _, row in df.iterrows():
-                    if row["Altitud (m)"] is not None:
-                        folium.CircleMarker(
-                            location=[float(row["Transformación"].split("(")[1].split(",")[1][:-1]),  # Latitud aproximada
-                                      float(row["Transformación"].split("(")[1].split(",")[0])],    # Longitud aproximada
-                            radius=10,
-                            color=row["Color"],
-                            fill=True,
-                            fill_opacity=0.7,
-                            tooltip=f"Etiqueta: {row['Etiqueta']}<br>Altitud: {row['Altitud (m)']} m"
-                        ).add_to(mapa)
-
-                # Mostrar el mapa en Streamlit
-                st.subheader("Visualización del Mapa de Altitudes")
-                st_folium(mapa, width=800, height=600)
-
-                # Descargar los datos procesados como CSV
-                csv = df.to_csv(index=False)
-                st.download_button(
-                    label="Descargar Datos como CSV",
-                    data=csv,
-                    file_name="datos_altitud_mapa_mexico.csv",
-                    mime="text/csv"
-                )
-
-            except Exception as e:
-                st.error(f"Error al procesar el archivo SVG: {e}") 
+        # Visualizar con Streamlit
+        st.title("Mapa de Elevación de México")
+        fig, ax = plt.subplots(figsize=(10, 8))
+        cax = ax.imshow(combined_elevation, cmap="terrain")
+        fig.colorbar(cax, ax=ax, label="Elevación (m)")
+        ax.set_title("Elevación de México")
+        ax.set_xlabel("Longitud")
+        ax.set_ylabel("Latitud")
+        st.pyplot(fig)
 
    
 
