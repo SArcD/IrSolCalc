@@ -1300,9 +1300,7 @@ ax.set_ylabel("Latitud")
 
 # Mostrar el mapa en Streamlit
 st.title("Mapa de Elevación para Colima")
-st.pyplot(fig) y esta es la url del segundo mosaico: https://drive.google.com/file/d/1mP2VGl3jK2fpCb8aeOigTWqufNQxvzFq/view?usp=sharing
-
-
+st.pyplot(fig) 
 ########################################################
 import os
 import numpy as np
