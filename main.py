@@ -1263,12 +1263,12 @@ mosaic_files = [
     {
         "url": "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr",
         "path": "Colima_ACE2_1.ace2",
-        "bounds": [-105, -103, 18, 20],  # Aproximado para el primer mosaico
+        "bounds": [-105, 90, 15, 30],  # Aproximado para el primer mosaico
     },
     {
         "url": "https://drive.google.com/uc?id=1mP2VGl3jK2fpCb8aeOigTWqufNQxvzFq",
         "path": "Colima_ACE2_2.ace2",
-        "bounds": [-107, -105, 18, 20],  # Aproximado para el segundo mosaico
+        "bounds": [-120, -105, 15, 30],  # Aproximado para el segundo mosaico
     },
 ]
 tile_size = (6000, 6000)  # Dimensiones de los mosaicos (9 arcseconds)
