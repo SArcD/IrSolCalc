@@ -1252,90 +1252,56 @@ folium.Choropleth(
 st.title("Mapa Detallado de Radiación Solar Promedio en México")
 st_folium(mapa, width=800, height=600)
 
-import os
+import os  # Importación para manejar archivos y rutas
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 import gdown
 
-# Parámetros de los archivos ACE2
-mosaic_files = [
-    {
-        "url": "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr",
-        "path": "Colima_ACE2_1.ace2",
-        "bounds": [-105, 90, 15, 30],  # Aproximado para el primer mosaico
-    },
-    {
-        "url": "https://drive.google.com/uc?id=1mP2VGl3jK2fpCb8aeOigTWqufNQxvzFq",
-        "path": "Colima_ACE2_2.ace2",
-        "bounds": [-120, -105, 15, 30],  # Aproximado para el segundo mosaico
-    },
-]
-tile_size = (6000, 6000)  # Dimensiones de los mosaicos (9 arcseconds)
+# Parámetros del archivo ACE2
+file_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"  # URL del archivo para Colima
+file_path = "Colima_ACE2.ace2"  # Nombre local del archivo
+tile_size = (6000, 6000)  # Dimensiones del mosaico ACE2 (9 arcseconds)
 
-# Descargar y leer los mosaicos
+# Descargar el archivo si no existe
+if not os.path.exists(file_path):
+    st.write("Descargando el archivo ACE2 para Colima...")
+    gdown.download(file_url, file_path, quiet=False)
+
+# Leer el archivo ACE2
 def read_ace2(file_path, tile_size):
     """Leer un archivo ACE2 y convertirlo en una matriz NumPy."""
     return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
 
-elevation_data_combined = None
-combined_extent = [float("inf"), float("-inf"), float("inf"), float("-inf")]
-
-# Ordenar mosaicos por longitud mínima (para garantizar el orden correcto)
-mosaic_files_sorted = sorted(mosaic_files, key=lambda x: x["bounds"][0])
-
-for mosaic in mosaic_files_sorted:
-    # Descargar archivo si no existe
-    if not os.path.exists(mosaic["path"]):
-        st.write(f"Descargando el archivo ACE2 desde {mosaic['url']}...")
-        gdown.download(mosaic["url"], mosaic["path"], quiet=False)
-
-    # Leer y procesar el mosaico
-    try:
-        elevation_data = read_ace2(mosaic["path"], tile_size)
-        st.write(f"Datos de elevación cargados correctamente para {mosaic['path']}.")
-        
-        # Obtener límites geográficos del mosaico
-        min_lon, max_lon, min_lat, max_lat = mosaic["bounds"]
-        
-        # Actualizar la extensión global
-        combined_extent[0] = min(combined_extent[0], min_lon)
-        combined_extent[1] = max(combined_extent[1], max_lon)
-        combined_extent[2] = min(combined_extent[2], min_lat)
-        combined_extent[3] = max(combined_extent[3], max_lat)
-        
-        # Combinar los datos de elevación
-        if elevation_data_combined is None:
-            elevation_data_combined = elevation_data
-        else:
-            elevation_data_combined = np.hstack((elevation_data_combined, elevation_data))
-
-    except Exception as e:
-        st.error(f"Error al cargar el archivo {mosaic['path']}: {e}")
-        st.stop()
+try:
+    elevation_data = read_ace2(file_path, tile_size)
+    st.write("Datos de elevación cargados correctamente.")
+except Exception as e:
+    st.error(f"Error al cargar el archivo ACE2: {e}")
+    st.stop()
 
 # Máscara para valores no válidos
-elevation_masked = np.ma.masked_where(elevation_data_combined <= 0, elevation_data_combined)
+elevation_masked = np.ma.masked_where(elevation_data <= 0, elevation_data)
 
-# Visualizar los datos de elevación combinados
-fig, ax = plt.subplots(figsize=(12, 10))
+# Visualizar los datos de elevación
+fig, ax = plt.subplots(figsize=(10, 8))
 cmap = plt.cm.terrain
 cmap.set_bad(color="white")  # Colorear los valores inválidos en blanco
-
 elevation_plot = ax.imshow(
     elevation_masked,
     cmap=cmap,
     origin="upper",
-    extent=combined_extent  # Extensión combinada
+    extent=[-105, -120, 15, 30]  # Aproximado para Colima (ajustar si es necesario)
 )
 plt.colorbar(elevation_plot, ax=ax, label="Elevación (m)")
-ax.set_title("Mapa de Elevación para Colima (Combinado)")
+ax.set_title("Mapa de Elevación para Colima")
 ax.set_xlabel("Longitud")
 ax.set_ylabel("Latitud")
 
 # Mostrar el mapa en Streamlit
-st.title("Mapa de Elevación para Colima (Combinado)")
-st.pyplot(fig)
+st.title("Mapa de Elevación para Colima")
+st.pyplot(fig) y esta es la url del segundo mosaico: https://drive.google.com/file/d/1mP2VGl3jK2fpCb8aeOigTWqufNQxvzFq/view?usp=sharing
+
 
 ########################################################
 import os
