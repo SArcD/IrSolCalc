@@ -1261,7 +1261,7 @@ import streamlit as st
 
 # URL del archivo ACE2 y GeoJSON
 ace2_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"
-geojson_url = "Colima.json"
+geojson_file = "Colima.json"
 
 # Descargar el archivo ACE2 si no existe
 ace2_file_path = "Colima_ACE2.ace2"
@@ -1279,14 +1279,18 @@ elevation_data = read_ace2(ace2_file_path)
 
 # Leer el archivo GeoJSON
 try:
-    gdf = gpd.read_file(geojson_url)
+    gdf = gpd.read_file(geojson_file)
     st.write("Archivo GeoJSON cargado correctamente.")
 except Exception as e:
     st.error(f"Error al cargar el archivo GeoJSON: {e}")
     st.stop()
 
 # Mostrar las columnas disponibles en el GeoDataFrame
-st.write("Columnas en el GeoDataFrame:", gdf.columns)
+st.write("Columnas disponibles en el GeoDataFrame:")
+st.write(gdf.columns)
+
+# Identificar la columna que contiene los nombres de las regiones
+key_column = st.selectbox("Seleccione la columna que contiene los nombres de las regiones:", gdf.columns)
 
 # Parámetros para radiación solar
 S0 = 1361  # Constante solar (W/m²)
@@ -1327,14 +1331,13 @@ gdf["Radiación Promedio"] = gdf.apply(calculate_region_radiation, axis=1)
 # Crear el mapa
 mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
 
-# Reemplaza "name" con la columna correcta en el GeoJSON
-key_column = "name"  # Actualiza según las columnas disponibles
+# Crear el mapa con la columna seleccionada
 folium.Choropleth(
     geo_data=gdf,
     name="Radiación Solar",
     data=gdf,
-    columns=[key_column, "Radiación Promedio"],  # Cambia "name" si es necesario
-    key_on=f"feature.properties.{key_column}",  # Ajusta el acceso al GeoJSON
+    columns=[key_column, "Radiación Promedio"],
+    key_on=f"feature.properties.{key_column}",
     fill_color="YlOrRd",
     fill_opacity=0.7,
     line_opacity=0.2,
@@ -1344,3 +1347,4 @@ folium.Choropleth(
 # Mostrar el mapa en Streamlit
 st.title("Mapa de Radiación Solar Promedio en Colima")
 st_folium(mapa, width=800, height=600)
+
