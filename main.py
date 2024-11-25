@@ -1073,7 +1073,6 @@ ax.set_ylabel("Latitud")
 st.pyplot(fig)
 
 
-
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
@@ -1082,9 +1081,6 @@ import streamlit as st
 tile_size = (1800, 1800)  # Dimensiones de cada mosaico
 resolution = 1 / 120  # Resolución de 30 arcsecs en grados
 tile_extent = 15  # Cada mosaico cubre 15x15 grados
-
-# Factor para reducir la resolución
-reduction_factor = 10  # Reducir la resolución 10 veces
 
 # Definir los archivos y sus posiciones
 files = {
@@ -1099,77 +1095,46 @@ files = {
     "30N120W_LAND_30S.ACE2": (30, -120),
 }
 
-# Crear una grilla global para México
-min_lat, max_lat = 0, 45  # Límites aproximados de latitud para México
-min_lon, max_lon = -120, -75  # Límites aproximados de longitud para México
-lat_points = int((max_lat - min_lat) / resolution)
-lon_points = int((max_lon - min_lon) / resolution)
-global_elevation = np.full((lat_points, lon_points), -32768, dtype=np.float32)  # Usar el valor de vacío
-
 def read_ace2(file_path):
     """Leer un archivo ACE2 como una matriz NumPy."""
     return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
 
-# Combinar los mosaicos en la grilla global
-for file, (sw_lat, sw_lon) in files.items():
+def plot_tile(data, sw_lat, sw_lon):
+    """Graficar un mosaico ACE2 con Plotly."""
+    latitudes = np.linspace(sw_lat + tile_extent, sw_lat, data.shape[0])
+    longitudes = np.linspace(sw_lon, sw_lon + tile_extent, data.shape[1])
+    masked_data = np.ma.masked_where(data <= 0, data)  # Mascara valores no válidos
+
+    fig = go.Figure(data=go.Heatmap(
+        z=masked_data,
+        x=longitudes,
+        y=latitudes,
+        colorscale="viridis",
+        colorbar=dict(title="Elevación (m)")
+    ))
+    fig.update_layout(
+        title=f"Mosaico ({sw_lat}°, {sw_lon}°)",
+        xaxis_title="Longitud",
+        yaxis_title="Latitud",
+        height=700
+    )
+    return fig
+
+# Crear una interfaz en Streamlit
+st.title("Visualización de Mosaicos de Elevación ACE2")
+st.write("Selecciona un mosaico para visualizar su elevación a máxima resolución.")
+
+# Menú desplegable para seleccionar un mosaico
+selected_file = st.selectbox("Selecciona un mosaico:", list(files.keys()))
+
+if selected_file:
+    # Cargar y graficar el mosaico seleccionado
+    sw_lat, sw_lon = files[selected_file]
     try:
-        # Leer los datos del mosaico
-        data = read_ace2(file)
-        
-        # Validar dimensiones del archivo
-        if data.shape != tile_size:
-            st.warning(f"Dimensiones inesperadas en el archivo {file}")
-            continue
-
-        # Calcular las posiciones en la grilla global
-        lat_start = int((max_lat - sw_lat - tile_extent) / resolution)
-        lat_end = lat_start + tile_size[0]
-        lon_start = int((sw_lon - min_lon) / resolution)
-        lon_end = lon_start + tile_size[1]
-
-        # Verificar si las coordenadas encajan correctamente
-        if (
-            lat_start < 0 or lat_end > global_elevation.shape[0] or
-            lon_start < 0 or lon_end > global_elevation.shape[1]
-        ):
-            st.warning(f"Archivo {file} fuera de los límites de la grilla")
-            continue
-
-        # Asignar los datos del mosaico
-        global_elevation[lat_start:lat_end, lon_start:lon_end] = data
+        tile_data = read_ace2(selected_file)
+        st.write(f"Visualizando el mosaico: **{selected_file}**")
+        fig = plot_tile(tile_data, sw_lat, sw_lon)
+        st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
-        st.error(f"Error al leer el archivo {file}: {e}")
+        st.error(f"Error al cargar el mosaico {selected_file}: {e}")
 
-# Reducir la resolución
-reduced_elevation = global_elevation[::reduction_factor, ::reduction_factor]
-
-# Corregir valores inválidos
-reduced_elevation = np.ma.masked_where(
-    (reduced_elevation <= 0) | (reduced_elevation == -32768), reduced_elevation
-)
-
-# Invertir el eje Y para mostrar correctamente
-latitudes = np.linspace(max_lat, min_lat, reduced_elevation.shape[0])
-longitudes = np.linspace(min_lon, max_lon, reduced_elevation.shape[1])
-
-# Crear un gráfico interactivo con Plotly
-st.title("Mapa de Elevación de México (Solo Elevaciones Positivas)")
-st.write("Este mapa muestra la elevación terrestre combinada de varios mosaicos ACE2. El océano ha sido enmascarado.")
-
-fig = go.Figure(data=go.Heatmap(
-    z=reduced_elevation,
-    x=longitudes,
-    y=latitudes,
-    colorscale="viridis",  # Escala de colores válida para Plotly
-    colorbar=dict(title="Elevación (m)")
-))
-
-fig.update_layout(
-    title="Elevación Topográfica de México (Solo Terreno)",
-    xaxis_title="Longitud",
-    yaxis_title="Latitud",
-    xaxis=dict(scaleanchor="y"),  # Escala igual para x e y
-    height=700
-)
-
-st.plotly_chart(fig, use_container_width=True)
