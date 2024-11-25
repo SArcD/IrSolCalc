@@ -1075,6 +1075,7 @@ st.pyplot(fig)
 
 
 import numpy as np
+import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -1149,7 +1150,7 @@ fig = go.Figure(data=go.Heatmap(
     z=elevation_masked,
     x=longitudes,
     y=latitudes,
-    colorscale="terrain",
+    colorscale="viridis",  # Escala de colores válida para Plotly
     colorbar=dict(title="Elevación (m)")
 ))
 
