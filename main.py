@@ -1252,6 +1252,7 @@ folium.Choropleth(
 st.title("Mapa Detallado de Radiación Solar Promedio en México")
 st_folium(mapa, width=800, height=600)
 
+import os
 import numpy as np
 import folium
 import geopandas as gpd
