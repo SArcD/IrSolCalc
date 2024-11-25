@@ -1278,41 +1278,60 @@ def read_ace2(file_path, tile_size):
     """Leer un archivo ACE2 y convertirlo en una matriz NumPy."""
     return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
 
-elevation_data_list = []
+elevation_data_combined = None
+combined_extent = [float("inf"), float("-inf"), float("inf"), float("-inf")]
+
 for mosaic in mosaic_files:
+    # Descargar archivo si no existe
     if not os.path.exists(mosaic["path"]):
         st.write(f"Descargando el archivo ACE2 desde {mosaic['url']}...")
         gdown.download(mosaic["url"], mosaic["path"], quiet=False)
+
+    # Leer y procesar el mosaico
     try:
         elevation_data = read_ace2(mosaic["path"], tile_size)
-        elevation_data_list.append((elevation_data, mosaic["bounds"]))
         st.write(f"Datos de elevación cargados correctamente para {mosaic['path']}.")
+        
+        # Obtener límites geográficos del mosaico
+        min_lon, max_lon, min_lat, max_lat = mosaic["bounds"]
+        
+        # Actualizar la extensión global
+        combined_extent[0] = min(combined_extent[0], min_lon)
+        combined_extent[1] = max(combined_extent[1], max_lon)
+        combined_extent[2] = min(combined_extent[2], min_lat)
+        combined_extent[3] = max(combined_extent[3], max_lat)
+        
+        # Combinar los datos de elevación
+        if elevation_data_combined is None:
+            elevation_data_combined = elevation_data
+        else:
+            elevation_data_combined = np.hstack((elevation_data_combined, elevation_data))
+
     except Exception as e:
         st.error(f"Error al cargar el archivo {mosaic['path']}: {e}")
         st.stop()
 
-# Crear el mapa de elevación combinado
+# Máscara para valores no válidos
+elevation_masked = np.ma.masked_where(elevation_data_combined <= 0, elevation_data_combined)
+
+# Visualizar los datos de elevación combinados
 fig, ax = plt.subplots(figsize=(12, 10))
 cmap = plt.cm.terrain
 cmap.set_bad(color="white")  # Colorear los valores inválidos en blanco
 
-for elevation_data, bounds in elevation_data_list:
-    min_lon, max_lon, min_lat, max_lat = bounds
-    elevation_masked = np.ma.masked_where(elevation_data <= 0, elevation_data)
-    elevation_plot = ax.imshow(
-        elevation_masked,
-        cmap=cmap,
-        origin="upper",
-        extent=[min_lon, max_lon, min_lat, max_lat],
-    )
-
+elevation_plot = ax.imshow(
+    elevation_masked,
+    cmap=cmap,
+    origin="upper",
+    extent=combined_extent  # Extensión combinada
+)
 plt.colorbar(elevation_plot, ax=ax, label="Elevación (m)")
 ax.set_title("Mapa de Elevación para Colima (Combinado)")
 ax.set_xlabel("Longitud")
 ax.set_ylabel("Latitud")
 
 # Mostrar el mapa en Streamlit
-st.title("Mapa de Elevación para Colima")
+st.title("Mapa de Elevación para Colima (Combinado)")
 st.pyplot(fig)
 
 ########################################################
