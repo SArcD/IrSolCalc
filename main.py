@@ -1652,8 +1652,8 @@ def calculate_annual_radiation(latitude, altitude, n_cloud):
         cos_h_s = np.clip(cos_h_s, -1, 1)  # Asegurar valores válidos
         h_s = np.arccos(cos_h_s)
         
-        # Radiación extraterrestre diaria en la cima de la atmósfera (J/m²)
-        H0 = (24 * 3600 / np.pi) * S0 * E0 * (
+        # Radiación extraterrestre diaria en la cima de la atmósfera (W/m²)
+        H0 = (24 / np.pi) * S0 * E0 * (
             np.cos(latitude_rad) * np.cos(declination_rad) * np.sin(h_s) +
             h_s * np.sin(latitude_rad) * np.sin(declination_rad)
         )
@@ -1667,10 +1667,9 @@ def calculate_annual_radiation(latitude, altitude, n_cloud):
         # Acumular radiación diaria
         total_radiation += max(0, H)
     
-    # Promedio anual diario de radiación (kWh/m²/día)
-    average_radiation = total_radiation / 365 /1000 # Convertir de J a kWh
+    # Promedio anual diario de radiación (W/m²)
+    average_radiation = total_radiation / 365
     return average_radiation
-
 # Calcular elevación promedio y radiación para cada municipio
 def calculate_municipality_radiation(row):
     bounds = row.geometry.bounds  # Obtener límites del municipio
