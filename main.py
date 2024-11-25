@@ -1252,3 +1252,78 @@ folium.Choropleth(
 st.title("Mapa Detallado de Radiación Solar Promedio en México")
 st_folium(mapa, width=800, height=600)
 
+import numpy as np
+import geopandas as gpd
+import folium
+import streamlit as st
+from streamlit_folium import st_folium
+
+# Constantes
+S0 = 1361  # Constante solar (W/m²)
+k = 0.12   # Incremento de radiación por km de altitud
+T_base = 0.75  # Transmisión atmosférica sin nubosidad
+
+# Nubosidad promedio (como fracción entre 0 y 1)
+cloudiness = {
+    "Aguascalientes": 0.25, "Baja California": 0.15, "Baja California Sur": 0.10,
+    "Campeche": 0.35, "Chiapas": 0.50, "Chihuahua": 0.20, "Ciudad de México": 0.40,
+    "Coahuila": 0.25, "Colima": 0.30, "Durango": 0.20, "Guanajuato": 0.30,
+    "Guerrero": 0.45, "Hidalgo": 0.40, "Jalisco": 0.35, "Estado de México": 0.50,
+    "Michoacán": 0.35, "Morelos": 0.45, "Nayarit": 0.40, "Nuevo León": 0.25,
+    "Oaxaca": 0.50, "Puebla": 0.40, "Querétaro": 0.35, "Quintana Roo": 0.55,
+    "San Luis Potosí": 0.30, "Sinaloa": 0.20, "Sonora": 0.10, "Tabasco": 0.60,
+    "Tamaulipas": 0.25, "Tlaxcala": 0.40, "Veracruz": 0.55, "Yucatán": 0.45, "Zacatecas": 0.20
+}
+
+def calculate_annual_radiation_with_clouds(latitude, altitude, cloudiness):
+    """Calcular radiación anual promedio ajustada por nubosidad."""
+    T_a = T_base * (1 - cloudiness)  # Ajustar transmisión por nubosidad
+    total_radiation = 0
+    for day in range(1, 366):
+        declination = 23.45 * np.sin(np.radians((360 / 365) * (day - 81)))
+        sin_lat_decl = np.sin(np.radians(latitude)) * np.sin(np.radians(declination))
+        cos_lat_decl = np.cos(np.radians(latitude)) * np.cos(np.radians(declination))
+        daily_radiation = S0 * T_a * (sin_lat_decl + cos_lat_decl) * (1 + k * altitude)
+        total_radiation += max(0, daily_radiation)
+    return total_radiation / 365  # Promedio anual
+
+# Cargar archivo GeoJSON
+geojson_file = "mx.json"
+try:
+    gdf = gpd.read_file(geojson_file)
+except Exception as e:
+    st.error(f"No se pudo cargar el archivo GeoJSON: {e}")
+    st.stop()
+
+# Calcular radiación ajustada para cada estado
+def calculate_state_radiation_with_clouds(row):
+    state_shape = row.geometry
+    avg_altitude = row["Altitud"]
+    cloud_factor = cloudiness.get(row["name"], 0.30)  # Nubosidad predeterminada 30% si no se encuentra
+    latitude = state_shape.centroid.y
+    return calculate_annual_radiation_with_clouds(latitude, avg_altitude, cloud_factor)
+
+# Agregar elevaciones promedio (previamente calculadas)
+gdf["Altitud"] = gdf["name"].map(lambda state: global_elevation[state])  # Simulación de datos
+
+# Calcular radiación ajustada
+gdf["Radiación Ajustada"] = gdf.apply(calculate_state_radiation_with_clouds, axis=1)
+
+# Crear mapa
+mapa = folium.Map(location=[23.6345, -102.5528], zoom_start=5)
+folium.Choropleth(
+    geo_data=gdf,
+    name="Radiación Ajustada",
+    data=gdf,
+    columns=["name", "Radiación Ajustada"],
+    key_on="feature.properties.name",
+    fill_color="YlGnBu",
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name="Radiación Ajustada Anual (W/m²)"
+).add_to(mapa)
+
+# Mostrar mapa en Streamlit
+st.title("Mapa de Radiación Solar Ajustada por Nubosidad")
+st.write("Este mapa muestra la radiación solar ajustada para cada estado, considerando elevación y nubosidad promedio.")
+st_folium(mapa, width=800, height=600)
