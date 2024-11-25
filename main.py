@@ -1252,7 +1252,7 @@ folium.Choropleth(
 st.title("Mapa Detallado de Radiación Solar Promedio en México")
 st_folium(mapa, width=800, height=600)
 
-import os
+import os  # Importación para manejar archivos y rutas
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -1301,4 +1301,3 @@ ax.set_ylabel("Latitud")
 # Mostrar el mapa en Streamlit
 st.title("Mapa de Elevación para Colima")
 st.pyplot(fig)
-
