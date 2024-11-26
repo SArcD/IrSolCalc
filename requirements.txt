@@ -30,3 +30,7 @@ streamlit-folium
 geopy
 geopandas
 rasterio
+rasterio
+gdown
+matplotlib
+numpy
