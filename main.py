@@ -1705,9 +1705,9 @@ folium.Choropleth(
 st.title("Mapa de Radiación Solar Promedio en Colima con Ajuste por Nubosidad")
 st_folium(mapa, width=800, height=600)
 
-
 import os  # Importación para manejar archivos y rutas
 import numpy as np
+import geopandas as gpd
 import plotly.graph_objects as go
 import streamlit as st
 import gdown
@@ -1715,9 +1715,10 @@ import gdown
 # Parámetros del archivo ACE2
 file_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"  # URL del archivo para Colima
 file_path = "Colima_ACE2.ace2"  # Nombre local del archivo
+geojson_path = "Colima.json"  # Archivo GeoJSON con el contorno de Colima
 tile_size = (6000, 6000)  # Dimensiones del mosaico ACE2 (9 arcseconds)
 
-# Descargar el archivo si no existe
+# Descargar el archivo ACE2 si no existe
 if not os.path.exists(file_path):
     st.write("Descargando el archivo ACE2 para Colima...")
     gdown.download(file_url, file_path, quiet=False)
@@ -1734,38 +1735,65 @@ except Exception as e:
     st.error(f"Error al cargar el archivo ACE2: {e}")
     st.stop()
 
-# Máscara para valores no válidos
-elevation_masked = np.ma.masked_where(elevation_data <= 0, elevation_data)
+# Cargar el archivo GeoJSON
+try:
+    gdf = gpd.read_file(geojson_path)
+    st.write("Archivo GeoJSON cargado correctamente.")
+except Exception as e:
+    st.error(f"Error al cargar el archivo GeoJSON: {e}")
+    st.stop()
 
-# Coordenadas aproximadas (ajustar según los límites reales del mosaico)
+# Coordenadas aproximadas del mosaico
 lon_min, lon_max = -105, -90
 lat_min, lat_max = 15, 30
+
+# Crear una grilla con las coordenadas del mosaico
+lon = np.linspace(lon_min, lon_max, elevation_data.shape[1])
+lat = np.linspace(lat_max, lat_min, elevation_data.shape[0])
+lon_grid, lat_grid = np.meshgrid(lon, lat)
+
+# Convertir los datos de elevación en un GeoDataFrame para filtrarlos
+points = gpd.points_from_xy(lon_grid.ravel(), lat_grid.ravel())
+elevation_gdf = gpd.GeoDataFrame({"elevation": elevation_data.ravel()}, geometry=points, crs="EPSG:4326")
+
+# Realizar un recorte (clip) para limitar los datos al área de Colima
+colima_gdf = gpd.clip(elevation_gdf, gdf)
+
+# Extraer las coordenadas y datos filtrados
+filtered_lon = colima_gdf.geometry.x
+filtered_lat = colima_gdf.geometry.y
+filtered_elevation = colima_gdf["elevation"]
 
 # Crear el gráfico interactivo con Plotly
 fig = go.Figure()
 
 fig.add_trace(
-    go.Heatmap(
-        z=elevation_masked,  # Datos de elevación
-        x=np.linspace(lon_min, lon_max, elevation_masked.shape[1]),  # Longitudes
-        y=np.linspace(lat_max, lat_min, elevation_masked.shape[0]),  # Latitudes (invertido)
-        colorscale="earth",  # Esquema de colores similar a terreno
-        colorbar=dict(title="Elevación (m)", titleside="right"),
-        zmin=np.min(elevation_masked),  # Valores mínimos para la escala
-        zmax=np.max(elevation_masked),  # Valores máximos para la escala
+    go.Scattermapbox(
+        lon=filtered_lon,
+        lat=filtered_lat,
+        mode="markers",
+        marker=dict(
+            size=5,
+            color=filtered_elevation,
+            colorscale="earth",
+            colorbar=dict(title="Elevación (m)"),
+        ),
+        text=filtered_elevation,  # Mostrar elevación en el tooltip
     )
 )
 
 # Configurar el diseño del gráfico
 fig.update_layout(
-    title="Mapa de Elevación para Colima",
-    xaxis_title="Longitud",
-    yaxis_title="Latitud",
-    xaxis=dict(scaleanchor="y"),  # Asegurar relación proporcional entre los ejes
-    yaxis=dict(scaleanchor="x"),
-    height=800,  # Altura del gráfico
+    title="Mapa de Elevación para Colima (Filtrado)",
+    mapbox=dict(
+        style="open-street-map",  # Estilo del mapa base
+        center={"lat": 19.2453, "lon": -103.725},
+        zoom=8,
+    ),
+    height=800,
 )
 
 # Mostrar el mapa en Streamlit
-st.title("Mapa de Elevación para Colima (Interactivo)")
+st.title("Mapa de Elevación para Colima (Filtrado por GeoJSON)")
 st.plotly_chart(fig, use_container_width=True)
+
