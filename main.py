@@ -1724,7 +1724,9 @@ def load_precipitation_data(files):
     for file in files:
         try:
             # Cargar datos del archivo CSV
-            df = pd.read_csv(file)
+#            df = pd.read_csv(file)
+            df = pd.read_csv(file, encoding='latin-1')
+
             # Filtrar datos donde EDO == 'COL'
             col_data = df[df['EDO'] == 'COL']
             # Eliminar la columna ESTACION
