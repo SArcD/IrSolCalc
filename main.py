@@ -1706,4 +1706,77 @@ st.title("Mapa de Radiación Solar Promedio en Colima con Ajuste por Nubosidad")
 st_folium(mapa, width=800, height=600)
 
 
+import os
+import pandas as pd
+import geopandas as gpd
+import folium
+import streamlit as st
+from streamlit_folium import st_folium
+
+# Ruta al archivo GeoJSON de Colima
+geojson_path = "Colima.json"
+
+# Listado de archivos de precipitación
+precipitation_files = [f"20240{i:02d}010000Lluv.csv" for i in range(1, 11)]
+
+# Función para procesar archivos y extraer datos de Colima
+def load_precipitation_data(files):
+    colima_data = []
+    for file in files:
+        # Cargar datos del archivo CSV
+        df = pd.read_csv(file)
+        # Filtrar datos donde EDO == 'COL'
+        col_data = df[df['EDO'] == 'COL']
+        # Agregar la columna del mes al DataFrame
+        col_data['Mes'] = os.path.basename(file).split('010000Lluv')[0]
+        colima_data.append(col_data)
+    return pd.concat(colima_data, ignore_index=True)
+
+# Cargar datos de precipitaciones de Colima
+precipitation_data = load_precipitation_data(precipitation_files)
+
+# Calcular la precipitación promedio por estación
+precipitation_avg = precipitation_data.groupby('ESTACION')['oct-24'].mean().reset_index()
+precipitation_avg.columns = ['ESTACION', 'Precipitación Promedio']
+
+# Cargar el archivo GeoJSON
+try:
+    gdf = gpd.read_file(geojson_path)
+    st.write("GeoJSON cargado correctamente.")
+except Exception as e:
+    st.error(f"Error al cargar el archivo GeoJSON: {e}")
+    st.stop()
+
+# Crear un mapa interactivo con Folium
+mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
+
+# Añadir capa de precipitaciones
+for _, row in precipitation_data.iterrows():
+    folium.CircleMarker(
+        location=[row['LAT'], row['LON']],
+        radius=5,
+        color='blue',
+        fill=True,
+        fill_color='blue',
+        fill_opacity=0.6,
+        tooltip=f"Estación: {row['ESTACION']}<br>Precipitación: {row['oct-24']} mm"
+    ).add_to(mapa)
+
+# Capa GeoJSON
+folium.Choropleth(
+    geo_data=gdf,
+    name="Precipitación Promedio",
+    data=precipitation_avg,
+    columns=["ESTACION", "Precipitación Promedio"],
+    key_on="feature.properties.NOM_MUN",
+    fill_color="YlGnBu",
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name="Precipitación Promedio (mm)"
+).add_to(mapa)
+
+# Mostrar mapa en Streamlit
+st.title("Mapa de Precipitación Promedio en Colima")
+st_folium(mapa, width=800, height=600)
+
 
