@@ -1745,9 +1745,21 @@ def load_precipitation_data(files):
 # Cargar datos de precipitaciones de Colima
 precipitation_data = load_precipitation_data(precipitation_files)
 
+# Validar que los datos se hayan cargado correctamente
+if precipitation_data.empty:
+    st.error("No se pudieron cargar los datos de precipitación.")
+    st.stop()
+
+# Mostrar las columnas para verificar su estructura
+st.write("Columnas en el DataFrame de precipitación:", precipitation_data.columns)
+
 # Calcular el promedio mensual por estación
-precipitation_avg = precipitation_data.groupby(['LAT', 'LON'])['oct-24'].mean().reset_index()
-precipitation_avg.columns = ['LAT', 'LON', 'Precipitación Promedio']
+if 'oct-24' in precipitation_data.columns:
+    precipitation_avg = precipitation_data.groupby(['LAT', 'LON'])['oct-24'].mean().reset_index()
+    precipitation_avg.columns = ['LAT', 'LON', 'Precipitación Promedio']
+else:
+    st.error("La columna 'oct-24' no existe en los datos.")
+    st.stop()
 
 # Interpolar datos de precipitación
 def interpolate_precipitation(data, grid_resolution=0.01):
