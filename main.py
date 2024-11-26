@@ -1704,3 +1704,68 @@ folium.Choropleth(
 # Mostrar mapa en Streamlit
 st.title("Mapa de Radiación Solar Promedio en Colima con Ajuste por Nubosidad")
 st_folium(mapa, width=800, height=600)
+
+
+import os  # Importación para manejar archivos y rutas
+import numpy as np
+import plotly.graph_objects as go
+import streamlit as st
+import gdown
+
+# Parámetros del archivo ACE2
+file_url = "https://drive.google.com/uc?id=1LcpoOmi-jOX_CyVvdqmGh19X5gVwPmjr"  # URL del archivo para Colima
+file_path = "Colima_ACE2.ace2"  # Nombre local del archivo
+tile_size = (6000, 6000)  # Dimensiones del mosaico ACE2 (9 arcseconds)
+
+# Descargar el archivo si no existe
+if not os.path.exists(file_path):
+    st.write("Descargando el archivo ACE2 para Colima...")
+    gdown.download(file_url, file_path, quiet=False)
+
+# Leer el archivo ACE2
+def read_ace2(file_path, tile_size):
+    """Leer un archivo ACE2 y convertirlo en una matriz NumPy."""
+    return np.fromfile(file_path, dtype=np.float32).reshape(tile_size)
+
+try:
+    elevation_data = read_ace2(file_path, tile_size)
+    st.write("Datos de elevación cargados correctamente.")
+except Exception as e:
+    st.error(f"Error al cargar el archivo ACE2: {e}")
+    st.stop()
+
+# Máscara para valores no válidos
+elevation_masked = np.ma.masked_where(elevation_data <= 0, elevation_data)
+
+# Coordenadas aproximadas (ajustar según los límites reales del mosaico)
+lon_min, lon_max = -105, -90
+lat_min, lat_max = 15, 30
+
+# Crear el gráfico interactivo con Plotly
+fig = go.Figure()
+
+fig.add_trace(
+    go.Heatmap(
+        z=elevation_masked,  # Datos de elevación
+        x=np.linspace(lon_min, lon_max, elevation_masked.shape[1]),  # Longitudes
+        y=np.linspace(lat_max, lat_min, elevation_masked.shape[0]),  # Latitudes (invertido)
+        colorscale="terrain",  # Esquema de colores
+        colorbar=dict(title="Elevación (m)", titleside="right"),
+        zmin=np.min(elevation_masked),  # Valores mínimos para la escala
+        zmax=np.max(elevation_masked),  # Valores máximos para la escala
+    )
+)
+
+# Configurar el diseño del gráfico
+fig.update_layout(
+    title="Mapa de Elevación para Colima",
+    xaxis_title="Longitud",
+    yaxis_title="Latitud",
+    xaxis=dict(scaleanchor="y"),  # Asegurar relación proporcional entre los ejes
+    yaxis=dict(scaleanchor="x"),
+    height=800,  # Altura del gráfico
+)
+
+# Mostrar el mapa en Streamlit
+st.title("Mapa de Elevación para Colima (Interactivo)")
+st.plotly_chart(fig, use_container_width=True)
