@@ -1744,20 +1744,30 @@ for i, file_id in enumerate(file_ids, start=1):
         url = f"https://drive.google.com/uc?id={file_id}"
         gdown.download(url, file_path, quiet=False)
 
-# Initialize list to store data arrays
-data_arrays = []
+# Initialize sum and count for averaging
+sum_data = None
+valid_pixel_count = None
 
-# Read and process GeoTIFF files
 st.write("Cargando y procesando archivos GeoTIFF...")
+
 for i in range(1, 13):
     file_path = os.path.join(temp_dir, f"prec_{i:02d}.tif")
     with rasterio.open(file_path) as src:
-        data = src.read(1)  # Read the first band
-        data_cleaned = np.where(data == -32768, np.nan, data)  # Replace invalid values
-        data_arrays.append(data_cleaned)
+        data = src.read(1)
+        data_cleaned = np.where(data == -32768, np.nan, data)
 
-# Calculate the average precipitation across all months
-annual_average = np.nanmean(data_arrays, axis=0)
+        # Initialize sum and count arrays
+        if sum_data is None:
+            sum_data = np.zeros_like(data_cleaned, dtype=np.float64)
+            valid_pixel_count = np.zeros_like(data_cleaned, dtype=np.float64)
+
+        # Increment sum and valid pixel count
+        valid_pixels = ~np.isnan(data_cleaned)
+        sum_data[valid_pixels] += data_cleaned[valid_pixels]
+        valid_pixel_count[valid_pixels] += 1
+
+# Calculate average only for valid pixels
+annual_average = np.divide(sum_data, valid_pixel_count, out=np.zeros_like(sum_data), where=valid_pixel_count > 0)
 
 # Plot the result
 fig, ax = plt.subplots(figsize=(10, 8))
@@ -1777,6 +1787,5 @@ if st.button("Eliminar archivos temporales"):
         os.remove(os.path.join(temp_dir, file_name))
     os.rmdir(temp_dir)
     st.success("Archivos temporales eliminados.")
-
 
 
