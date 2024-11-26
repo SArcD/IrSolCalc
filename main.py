@@ -1716,20 +1716,24 @@ from streamlit_folium import st_folium
 # Ruta al archivo GeoJSON de Colima
 geojson_path = "Colima.json"
 
-# Listado de archivos de precipitación
-precipitation_files = [f"20240{i:02d}010000Lluv.csv" for i in range(1, 11)]
+# Listado de archivos de precipitación (ajustados a los nombres correctos)
+precipitation_files = [f"20240{i:02d}010000Lluv" for i in range(1, 11)]
 
 # Función para procesar archivos y extraer datos de Colima
 def load_precipitation_data(files):
     colima_data = []
     for file in files:
-        # Cargar datos del archivo CSV
-        df = pd.read_csv(file)
-        # Filtrar datos donde EDO == 'COL'
-        col_data = df[df['EDO'] == 'COL']
-        # Agregar la columna del mes al DataFrame
-        col_data['Mes'] = os.path.basename(file).split('010000Lluv')[0]
-        colima_data.append(col_data)
+        try:
+            # Cargar datos del archivo CSV
+            df = pd.read_csv(file)
+            # Filtrar datos donde EDO == 'COL'
+            col_data = df[df['EDO'] == 'COL']
+            # Agregar la columna del mes al DataFrame
+            col_data['Mes'] = os.path.basename(file).split('010000Lluv')[0]
+            colima_data.append(col_data)
+        except FileNotFoundError:
+            st.warning(f"No se encontró el archivo: {file}")
+            continue
     return pd.concat(colima_data, ignore_index=True)
 
 # Cargar datos de precipitaciones de Colima
@@ -1778,5 +1782,4 @@ folium.Choropleth(
 # Mostrar mapa en Streamlit
 st.title("Mapa de Precipitación Promedio en Colima")
 st_folium(mapa, width=800, height=600)
-
 
