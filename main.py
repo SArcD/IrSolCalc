@@ -1709,8 +1709,8 @@ import streamlit as st
 import numpy as np
 import rasterio
 import matplotlib.pyplot as plt
-import gdown
-import os
+import requests
+from io import BytesIO
 
 # Title of the app
 st.title("Cálculo y Visualización de Precipitación Promedio Anual")
@@ -1732,29 +1732,24 @@ file_ids = [
     "1o-7jl9CNPuR4C6JqjZxRQjI2ffZCwKXJ"
 ]
 
-# Temporary directory for files
-temp_dir = "temp_geotiff_files"
-os.makedirs(temp_dir, exist_ok=True)
-
-# Download all files from Google Drive
-st.write("Descargando archivos desde Google Drive...")
-for i, file_id in enumerate(file_ids, start=1):
-    file_path = os.path.join(temp_dir, f"prec_{i:02d}.tif")
-    if not os.path.exists(file_path):  # Avoid downloading multiple times
-        url = f"https://drive.google.com/uc?id={file_id}"
-        gdown.download(url, file_path, quiet=False)
-
 # Initialize sum and count for averaging
 sum_data = None
 valid_pixel_count = None
 
-st.write("Cargando y procesando archivos GeoTIFF...")
+st.write("Descargando y procesando archivos GeoTIFF directamente desde Google Drive...")
 
-for i in range(1, 13):
-    file_path = os.path.join(temp_dir, f"prec_{i:02d}.tif")
-    with rasterio.open(file_path) as src:
-        data = src.read(1)
-        data_cleaned = np.where(data == -32768, np.nan, data)
+# Process each file directly from Google Drive
+for i, file_id in enumerate(file_ids, start=1):
+    # Generate the Google Drive direct download URL
+    url = f"https://drive.google.com/uc?id={file_id}"
+    
+    # Download the file in memory
+    response = requests.get(url)
+    response.raise_for_status()  # Raise an error if the download fails
+    
+    with rasterio.open(BytesIO(response.content)) as src:
+        data = src.read(1)  # Read the first band
+        data_cleaned = np.where(data == -32768, np.nan, data)  # Replace invalid values
 
         # Initialize sum and count arrays
         if sum_data is None:
@@ -1780,12 +1775,5 @@ ax.set_ylabel('Latitud (píxeles)')
 
 # Display the plot in Streamlit
 st.pyplot(fig)
-
-# Cleanup: Optionally, remove the temporary files
-if st.button("Eliminar archivos temporales"):
-    for file_name in os.listdir(temp_dir):
-        os.remove(os.path.join(temp_dir, file_name))
-    os.rmdir(temp_dir)
-    st.success("Archivos temporales eliminados.")
 
 
