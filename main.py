@@ -1709,124 +1709,82 @@ import os
 import pandas as pd
 import geopandas as gpd
 import numpy as np
-import folium
-from scipy.interpolate import griddata
 import streamlit as st
 from streamlit_folium import st_folium
+import folium
+from scipy.interpolate import griddata
 
-# Ruta al archivo GeoJSON de Colima
+# Archivo GeoJSON para Colima
 geojson_path = "Colima.json"
 
-# Listado de archivos de precipitación con la terminación .csv
-precipitation_files = [f"2024{i:02d}010000Lluv.csv" for i in range(1, 11)]  # Enero (01) a Octubre (10)
+# Obtener la lista de archivos CSV
+file_names = [f"2024{str(month).zfill(2)}010000Lluv.csv" for month in range(1, 11)]
 
-# Función para procesar archivos y extraer datos de Colima
-def load_precipitation_data(files):
-    colima_data = []
-    for file in files:
-        try:
-            # Cargar datos del archivo CSV con codificación 'latin-1' para evitar errores de decodificación
-            df = pd.read_csv(file, encoding='latin-1')
-            # Filtrar datos donde EDO == 'COL'
-            col_data = df[df['EDO'] == 'COL']
-            # Eliminar la columna ESTACION (si existe)
-            col_data = col_data.drop(columns=['ESTACION'], errors='ignore')
-            # Agregar la columna del mes al DataFrame
-            col_data['Mes'] = os.path.basename(file).split('010000Lluv')[0][-6:-4]  # Extraer el mes del nombre del archivo
-            colima_data.append(col_data)
-        except FileNotFoundError:
-            st.warning(f"No se encontró el archivo: {file}")
-            continue
-        except UnicodeDecodeError:
-            st.error(f"Error de codificación en el archivo: {file}.")
-            continue
-    return pd.concat(colima_data, ignore_index=True)
+# Leer los datos de cada archivo y procesar Colima
+colima_data = []
 
-# Cargar datos de precipitaciones de Colima
-precipitation_data = load_precipitation_data(precipitation_files)
+for file_name in file_names:
+    try:
+        # Cargar el archivo CSV
+        df = pd.read_csv(file_name, encoding="latin1")
+        # Eliminar la columna ESTACION
+        df = df.drop(columns=["ESTACION"], errors="ignore")
+        # Filtrar por estado (EDO = "COL")
+        df_colima = df[df["EDO"] == "COL"].copy()
+        # Obtener el nombre de la columna de precipitación (el último nombre)
+        precipitation_column = df_colima.columns[-1]
+        # Renombrar la columna para facilitar el manejo
+        df_colima.rename(columns={precipitation_column: "Precipitación"}, inplace=True)
+        colima_data.append(df_colima)
+    except Exception as e:
+        st.error(f"Error al procesar el archivo {file_name}: {e}")
 
-# Validar que los datos se hayan cargado correctamente
-if precipitation_data.empty:
-    st.error("No se pudieron cargar los datos de precipitación.")
-    st.stop()
+# Combinar todos los datos en un solo DataFrame
+colima_combined = pd.concat(colima_data, ignore_index=True)
 
-# Mostrar las columnas para verificar su estructura
-st.write("Columnas en el DataFrame de precipitación:", precipitation_data.columns)
+# Calcular la precipitación promedio por latitud y longitud
+avg_precipitation = (
+    colima_combined.groupby(["LAT", "LON"])["Precipitación"].mean().reset_index()
+)
 
-# Calcular el promedio mensual por estación
-if 'oct-24' in precipitation_data.columns:
-    precipitation_avg = precipitation_data.groupby(['LAT', 'LON'])['oct-24'].mean().reset_index()
-    precipitation_avg.columns = ['LAT', 'LON', 'Precipitación Promedio']
-else:
-    st.error("La columna 'oct-24' no existe en los datos.")
-    st.stop()
+# Interpolación espacial de la precipitación
+lons = avg_precipitation["LON"].values
+lats = avg_precipitation["LAT"].values
+values = avg_precipitation["Precipitación"].values
 
-# Interpolar datos de precipitación
-def interpolate_precipitation(data, grid_resolution=0.01):
-    lats = data['LAT']
-    lons = data['LON']
-    values = data['Precipitación Promedio']
+# Crear una grilla para interpolar
+lon_min, lon_max = lons.min(), lons.max()
+lat_min, lat_max = lats.min(), lats.max()
+grid_lon, grid_lat = np.meshgrid(
+    np.linspace(lon_min, lon_max, 100), np.linspace(lat_min, lat_max, 100)
+)
 
-    # Crear una grilla con resolución definida
-    lat_min, lat_max = lats.min(), lats.max()
-    lon_min, lon_max = lons.min(), lons.max()
-    grid_lat, grid_lon = np.mgrid[lat_min:lat_max:grid_resolution, lon_min:lon_max:grid_resolution]
+grid_precipitation = griddata(
+    (lons, lats), values, (grid_lon, grid_lat), method="linear"
+)
 
-    # Interpolar datos usando el método 'linear'
-    interpolated_values = griddata(
-        points=(lats, lons),
-        values=values,
-        xi=(grid_lat, grid_lon),
-        method='linear'
-    )
-    return grid_lat, grid_lon, interpolated_values
-
-grid_lat, grid_lon, interpolated_precipitation = interpolate_precipitation(precipitation_avg)
-
-# Escalar datos de precipitación para evitar valores fuera de rango
-min_precip = np.nanmin(interpolated_precipitation)
-max_precip = np.nanmax(interpolated_precipitation)
-
-# Cargar el archivo GeoJSON
-try:
-    gdf = gpd.read_file(geojson_path)
-    st.write("GeoJSON cargado correctamente.")
-except Exception as e:
-    st.error(f"Error al cargar el archivo GeoJSON: {e}")
-    st.stop()
+# Cargar el GeoJSON de Colima
+gdf_colima = gpd.read_file(geojson_path)
 
 # Crear un mapa interactivo con Folium
 mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
 
-# Añadir la capa Choropleth
-folium.Choropleth(
-    geo_data=gdf,
-    name="Límites de Colima",
-    data=gdf,
-    columns=["NOM_MUN", "Precipitación Promedio"],
-    key_on="feature.properties.NOM_MUN",
-    fill_color="YlGnBu",
-    fill_opacity=0.7,
-    line_opacity=0.2,
-    threshold_scale=[min_precip, max_precip / 4, max_precip / 2, 3 * max_precip / 4, max_precip],
-    legend_name="Precipitación Promedio (mm)"
+# Añadir la capa interpolada
+folium.raster_layers.ImageOverlay(
+    image=grid_precipitation,
+    bounds=[[lat_min, lon_min], [lat_max, lon_max]],
+    colormap=lambda x: (0, 0, x, x),  # Colores en escala de azul
+    opacity=0.6,
 ).add_to(mapa)
 
-# Añadir una capa de HeatMap
-heat_data = []
-for i in range(len(grid_lat)):
-    for j in range(len(grid_lon)):
-        value = interpolated_precipitation[i, j]
-        if not np.isnan(value):  # Evitar valores nulos
-            heat_data.append([grid_lat[i, j], grid_lon[i, j], value])
-
-# Agregar capa GeoJSON
+# Añadir los límites de Colima
 folium.GeoJson(
-    geojson_path,
-    name="Límites de Colima",
-    style_function=lambda x: {'color': 'black', 'weight': 1, 'fillOpacity': 0.2}
+    gdf_colima,
+    name="Límites Municipales",
+    style_function=lambda x: {"color": "black", "weight": 2, "fillOpacity": 0},
 ).add_to(mapa)
 
-# Mostrar el mapa
-st.title("Mapa de Precipitación Promedio Interpolada en Colima")
+# Mostrar el mapa en Streamlit
+st.title("Mapa de Precipitación Promedio en Colima (2024)")
 st_folium(mapa, width=800, height=600)
+
