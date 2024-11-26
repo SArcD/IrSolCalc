@@ -1705,86 +1705,78 @@ folium.Choropleth(
 st.title("Mapa de Radiación Solar Promedio en Colima con Ajuste por Nubosidad")
 st_folium(mapa, width=800, height=600)
 
-import os
-import pandas as pd
-import geopandas as gpd
-import numpy as np
 import streamlit as st
-from streamlit_folium import st_folium
-import folium
-from scipy.interpolate import griddata
+import numpy as np
+import rasterio
+import matplotlib.pyplot as plt
+import gdown
+import os
 
-# Archivo GeoJSON para Colima
-geojson_path = "Colima.json"
+# Title of the app
+st.title("Cálculo y Visualización de Precipitación Promedio Anual")
 
-# Obtener la lista de archivos CSV
-file_names = [f"2024{str(month).zfill(2)}010000Lluv.csv" for month in range(1, 11)]
+# Instruction for the user
+st.write("Esta aplicación descarga archivos GeoTIFF mensuales de precipitación desde Google Drive, calcula la precipitación promedio anual y genera un mapa visual.")
 
-# Leer los datos de cada archivo y procesar Colima
-colima_data = []
+# Google Drive file IDs
+file_ids = [
+    "1r9IbunFwq9ZGS8XesybqI5XG1qqhLzG7",
+    "1zoKbJNF_V0A8bMFOvCcRin_jdsVlHGjQ",
+    "1vWKSjmd3OcC8Dngu1oxhXXhLGueSJp--",
+    "1M9aX9R26Qj87DZfrTVpsJz39TnIuWqd1",
+    "1xFhOHI4Gt3D6SSC2w_aJHZbt94J6IucE",
+    "10NJU3uavL0ZlSWRGhExk79rZj9C1CVRY",
+    "1pzC8vNOKmO2-8Nj20ise7CoENXspfY5R",
+    "1hb_H7UIYUnMaPeCNAXsdae5Ghe3kZsZc",
+    "1d9igf2A6jUQeGYCk6yiy-40Hih1iyqru",
+    "1o-7jl9CNPuR4C6JqjZxRQjI2ffZCwKXJ"
+]
 
-for file_name in file_names:
-    try:
-        # Cargar el archivo CSV
-        df = pd.read_csv(file_name, encoding="latin1")
-        # Eliminar la columna ESTACION
-        df = df.drop(columns=["ESTACION"], errors="ignore")
-        # Filtrar por estado (EDO = "COL")
-        df_colima = df[df["EDO"] == "COL"].copy()
-        # Obtener el nombre de la columna de precipitación (el último nombre)
-        precipitation_column = df_colima.columns[-1]
-        # Renombrar la columna para facilitar el manejo
-        df_colima.rename(columns={precipitation_column: "Precipitación"}, inplace=True)
-        colima_data.append(df_colima)
-    except Exception as e:
-        st.error(f"Error al procesar el archivo {file_name}: {e}")
+# Temporary directory for files
+temp_dir = "temp_geotiff_files"
+os.makedirs(temp_dir, exist_ok=True)
 
-# Combinar todos los datos en un solo DataFrame
-colima_combined = pd.concat(colima_data, ignore_index=True)
+# Download all files from Google Drive
+st.write("Descargando archivos desde Google Drive...")
+for i, file_id in enumerate(file_ids, start=1):
+    file_path = os.path.join(temp_dir, f"prec_{i:02d}.tif")
+    if not os.path.exists(file_path):  # Avoid downloading multiple times
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, file_path, quiet=False)
 
-# Calcular la precipitación promedio por latitud y longitud
-avg_precipitation = (
-    colima_combined.groupby(["LAT", "LON"])["Precipitación"].mean().reset_index()
-)
+# Initialize list to store data arrays
+data_arrays = []
 
-# Interpolación espacial de la precipitación
-lons = avg_precipitation["LON"].values
-lats = avg_precipitation["LAT"].values
-values = avg_precipitation["Precipitación"].values
+# Read and process GeoTIFF files
+st.write("Cargando y procesando archivos GeoTIFF...")
+for i in range(1, 13):
+    file_path = os.path.join(temp_dir, f"prec_{i:02d}.tif")
+    with rasterio.open(file_path) as src:
+        data = src.read(1)  # Read the first band
+        data_cleaned = np.where(data == -32768, np.nan, data)  # Replace invalid values
+        data_arrays.append(data_cleaned)
 
-# Crear una grilla para interpolar
-lon_min, lon_max = lons.min(), lons.max()
-lat_min, lat_max = lats.min(), lats.max()
-grid_lon, grid_lat = np.meshgrid(
-    np.linspace(lon_min, lon_max, 100), np.linspace(lat_min, lat_max, 100)
-)
+# Calculate the average precipitation across all months
+annual_average = np.nanmean(data_arrays, axis=0)
 
-grid_precipitation = griddata(
-    (lons, lats), values, (grid_lon, grid_lat), method="linear"
-)
+# Plot the result
+fig, ax = plt.subplots(figsize=(10, 8))
+im = ax.imshow(annual_average, cmap='Blues', vmin=0, vmax=300)
+cbar = fig.colorbar(im, ax=ax)
+cbar.set_label('Precipitación Promedio Anual (mm)')
+ax.set_title('Mapa de Precipitación Promedio Anual')
+ax.set_xlabel('Longitud (píxeles)')
+ax.set_ylabel('Latitud (píxeles)')
 
-# Cargar el GeoJSON de Colima
-gdf_colima = gpd.read_file(geojson_path)
+# Display the plot in Streamlit
+st.pyplot(fig)
 
-# Crear un mapa interactivo con Folium
-mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
+# Cleanup: Optionally, remove the temporary files
+if st.button("Eliminar archivos temporales"):
+    for file_name in os.listdir(temp_dir):
+        os.remove(os.path.join(temp_dir, file_name))
+    os.rmdir(temp_dir)
+    st.success("Archivos temporales eliminados.")
 
-# Añadir la capa interpolada
-folium.raster_layers.ImageOverlay(
-    image=grid_precipitation,
-    bounds=[[lat_min, lon_min], [lat_max, lon_max]],
-    colormap=lambda x: (0, 0, x, x),  # Colores en escala de azul
-    opacity=0.6,
-).add_to(mapa)
 
-# Añadir los límites de Colima
-folium.GeoJson(
-    gdf_colima,
-    name="Límites Municipales",
-    style_function=lambda x: {"color": "black", "weight": 2, "fillOpacity": 0},
-).add_to(mapa)
-
-# Mostrar el mapa en Streamlit
-st.title("Mapa de Precipitación Promedio en Colima (2024)")
-st_folium(mapa, width=800, height=600)
 
