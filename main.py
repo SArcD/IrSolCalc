@@ -1771,6 +1771,10 @@ def interpolate_precipitation(data, grid_resolution=0.01):
 
 grid_lat, grid_lon, interpolated_precipitation = interpolate_precipitation(precipitation_avg)
 
+# Escalar datos de precipitación para evitar valores fuera de rango
+min_precip = np.nanmin(interpolated_precipitation)
+max_precip = np.nanmax(interpolated_precipitation)
+
 # Cargar el archivo GeoJSON
 try:
     gdf = gpd.read_file(geojson_path)
@@ -1782,7 +1786,21 @@ except Exception as e:
 # Crear un mapa interactivo con Folium
 mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
 
-# Añadir la capa de precipitación interpolada como una HeatMap
+# Añadir la capa Choropleth
+folium.Choropleth(
+    geo_data=gdf,
+    name="Límites de Colima",
+    data=gdf,
+    columns=["NOM_MUN", "Precipitación Promedio"],
+    key_on="feature.properties.NOM_MUN",
+    fill_color="YlGnBu",
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    threshold_scale=[min_precip, max_precip / 4, max_precip / 2, 3 * max_precip / 4, max_precip],
+    legend_name="Precipitación Promedio (mm)"
+).add_to(mapa)
+
+# Añadir una capa de HeatMap
 heat_data = []
 for i in range(len(grid_lat)):
     for j in range(len(grid_lon)):
@@ -1790,23 +1808,11 @@ for i in range(len(grid_lat)):
         if not np.isnan(value):  # Evitar valores nulos
             heat_data.append([grid_lat[i, j], grid_lon[i, j], value])
 
-# Añadir capa GeoJSON
+# Agregar capa GeoJSON
 folium.GeoJson(
     geojson_path,
     name="Límites de Colima",
     style_function=lambda x: {'color': 'black', 'weight': 1, 'fillOpacity': 0.2}
-).add_to(mapa)
-
-# Crear una capa Choropleth
-folium.Choropleth(
-    geo_data=gdf,
-    data=precipitation_avg,
-    columns=["LAT", "Precipitación Promedio"],
-    key_on=None,  # Vincular con datos interpolados
-    fill_color="YlGnBu",
-    fill_opacity=0.7,
-    line_opacity=0.2,
-    legend_name="Precipitación Promedio (mm)"
 ).add_to(mapa)
 
 # Mostrar el mapa
