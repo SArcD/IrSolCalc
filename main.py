@@ -1716,8 +1716,8 @@ from streamlit_folium import st_folium
 # Ruta al archivo GeoJSON de Colima
 geojson_path = "Colima.json"
 
-# Listado de archivos de precipitación (nombres corregidos)
-precipitation_files = [f"2024{i:02d}010000Lluv" for i in range(1, 11)]  # Genera nombres desde enero (01) hasta octubre (10)
+# Listado de archivos de precipitación con la terminación .csv
+precipitation_files = [f"2024{i:02d}010000Lluv.csv" for i in range(1, 11)]  # Genera nombres desde enero (01) hasta octubre (10)
 
 # Función para procesar archivos y extraer datos de Colima
 def load_precipitation_data(files):
@@ -1729,7 +1729,7 @@ def load_precipitation_data(files):
             # Filtrar datos donde EDO == 'COL'
             col_data = df[df['EDO'] == 'COL']
             # Agregar la columna del mes al DataFrame
-            col_data['Mes'] = os.path.basename(file).split('010000Lluv')[0][-2:]  # Extraer el mes del nombre del archivo
+            col_data['Mes'] = os.path.basename(file).split('010000Lluv')[0][-6:-4]  # Extraer el mes del nombre del archivo
             colima_data.append(col_data)
         except FileNotFoundError:
             st.warning(f"No se encontró el archivo: {file}")
