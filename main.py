@@ -1708,7 +1708,9 @@ st_folium(mapa, width=800, height=600)
 import os
 import pandas as pd
 import geopandas as gpd
+import numpy as np
 import folium
+from scipy.interpolate import griddata
 import streamlit as st
 from streamlit_folium import st_folium
 
@@ -1723,10 +1725,8 @@ def load_precipitation_data(files):
     colima_data = []
     for file in files:
         try:
-            # Cargar datos del archivo CSV
-#            df = pd.read_csv(file)
+            # Cargar datos del archivo CSV con codificación 'latin-1'
             df = pd.read_csv(file, encoding='latin-1')
-
             # Filtrar datos donde EDO == 'COL'
             col_data = df[df['EDO'] == 'COL']
             # Eliminar la columna ESTACION
@@ -1737,14 +1737,40 @@ def load_precipitation_data(files):
         except FileNotFoundError:
             st.warning(f"No se encontró el archivo: {file}")
             continue
+        except UnicodeDecodeError:
+            st.error(f"Error de codificación en el archivo: {file}. Prueba con otra codificación.")
+            continue
     return pd.concat(colima_data, ignore_index=True)
 
 # Cargar datos de precipitaciones de Colima
 precipitation_data = load_precipitation_data(precipitation_files)
 
-# Calcular la precipitación promedio por ubicación
+# Calcular el promedio mensual por estación
 precipitation_avg = precipitation_data.groupby(['LAT', 'LON'])['oct-24'].mean().reset_index()
 precipitation_avg.columns = ['LAT', 'LON', 'Precipitación Promedio']
+
+# Generar una grilla para interpolar precipitaciones en Colima
+def interpolate_precipitation(data, grid_resolution=0.01):
+    lats = data['LAT']
+    lons = data['LON']
+    values = data['Precipitación Promedio']
+
+    # Crear una grilla con resolución definida
+    lat_min, lat_max = lats.min(), lats.max()
+    lon_min, lon_max = lons.min(), lons.max()
+    grid_lat, grid_lon = np.mgrid[lat_min:lat_max:grid_resolution, lon_min:lon_max:grid_resolution]
+
+    # Interpolar datos usando el método 'linear'
+    interpolated_values = griddata(
+        points=(lats, lons),
+        values=values,
+        xi=(grid_lat, grid_lon),
+        method='linear'
+    )
+    return grid_lat, grid_lon, interpolated_values
+
+# Interpolar datos de precipitación
+grid_lat, grid_lon, interpolated_precipitation = interpolate_precipitation(precipitation_avg)
 
 # Cargar el archivo GeoJSON
 try:
@@ -1757,31 +1783,28 @@ except Exception as e:
 # Crear un mapa interactivo con Folium
 mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
 
-# Añadir capa de precipitaciones
-for _, row in precipitation_avg.iterrows():
-    folium.CircleMarker(
-        location=[row['LAT'], row['LON']],
-        radius=5,
-        color='blue',
-        fill=True,
-        fill_color='blue',
-        fill_opacity=0.6,
-        tooltip=f"Precipitación Promedio: {row['Precipitación Promedio']} mm"
-    ).add_to(mapa)
+# Añadir capa de interpolación
+for i in range(len(grid_lat)):
+    for j in range(len(grid_lon)):
+        value = interpolated_precipitation[i, j]
+        if not np.isnan(value):  # Evitar agregar puntos nulos
+            folium.CircleMarker(
+                location=[grid_lat[i, j], grid_lon[i, j]],
+                radius=2,
+                color='blue',
+                fill=True,
+                fill_color='blue',
+                fill_opacity=0.5,
+                tooltip=f"Precipitación: {value:.2f} mm"
+            ).add_to(mapa)
 
-# Capa GeoJSON
-folium.Choropleth(
-    geo_data=gdf,
-    name="Precipitación Promedio",
-    data=precipitation_avg,
-    columns=["LAT", "Precipitación Promedio"],
-    key_on="feature.properties.NOM_MUN",
-    fill_color="YlGnBu",
-    fill_opacity=0.7,
-    line_opacity=0.2,
-    legend_name="Precipitación Promedio (mm)"
+# Capa GeoJSON para los límites de Colima
+folium.GeoJson(
+    geojson_path,
+    name="Límites de Colima",
+    style_function=lambda x: {'color': 'black', 'weight': 1, 'fillOpacity': 0}
 ).add_to(mapa)
 
 # Mostrar mapa en Streamlit
-st.title("Mapa de Precipitación Promedio en Colima")
+st.title("Mapa de Precipitación Interpolada en Colima")
 st_folium(mapa, width=800, height=600)
