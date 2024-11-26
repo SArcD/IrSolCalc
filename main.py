@@ -1725,11 +1725,11 @@ def load_precipitation_data(files):
     colima_data = []
     for file in files:
         try:
-            # Cargar datos del archivo CSV con codificación 'latin-1'
+            # Cargar datos del archivo CSV con codificación 'latin-1' para evitar errores de decodificación
             df = pd.read_csv(file, encoding='latin-1')
             # Filtrar datos donde EDO == 'COL'
             col_data = df[df['EDO'] == 'COL']
-            # Eliminar la columna ESTACION
+            # Eliminar la columna ESTACION (si existe)
             col_data = col_data.drop(columns=['ESTACION'], errors='ignore')
             # Agregar la columna del mes al DataFrame
             col_data['Mes'] = os.path.basename(file).split('010000Lluv')[0][-6:-4]  # Extraer el mes del nombre del archivo
@@ -1738,7 +1738,7 @@ def load_precipitation_data(files):
             st.warning(f"No se encontró el archivo: {file}")
             continue
         except UnicodeDecodeError:
-            st.error(f"Error de codificación en el archivo: {file}. Prueba con otra codificación.")
+            st.error(f"Error de codificación en el archivo: {file}.")
             continue
     return pd.concat(colima_data, ignore_index=True)
 
