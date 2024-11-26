@@ -29,3 +29,4 @@ streamlit-leaflet
 streamlit-folium
 geopy
 geopandas
+rasterio
