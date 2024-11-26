@@ -1718,7 +1718,7 @@ from streamlit_folium import st_folium
 geojson_path = "Colima.json"
 
 # Listado de archivos de precipitación con la terminación .csv
-precipitation_files = [f"2024{i:02d}010000Lluv.csv" for i in range(1, 11)]  # Genera nombres desde enero (01) hasta octubre (10)
+precipitation_files = [f"2024{i:02d}010000Lluv.csv" for i in range(1, 11)]  # Enero (01) a Octubre (10)
 
 # Función para procesar archivos y extraer datos de Colima
 def load_precipitation_data(files):
@@ -1749,7 +1749,7 @@ precipitation_data = load_precipitation_data(precipitation_files)
 precipitation_avg = precipitation_data.groupby(['LAT', 'LON'])['oct-24'].mean().reset_index()
 precipitation_avg.columns = ['LAT', 'LON', 'Precipitación Promedio']
 
-# Generar una grilla para interpolar precipitaciones en Colima
+# Interpolar datos de precipitación
 def interpolate_precipitation(data, grid_resolution=0.01):
     lats = data['LAT']
     lons = data['LON']
@@ -1769,7 +1769,6 @@ def interpolate_precipitation(data, grid_resolution=0.01):
     )
     return grid_lat, grid_lon, interpolated_values
 
-# Interpolar datos de precipitación
 grid_lat, grid_lon, interpolated_precipitation = interpolate_precipitation(precipitation_avg)
 
 # Cargar el archivo GeoJSON
@@ -1783,28 +1782,33 @@ except Exception as e:
 # Crear un mapa interactivo con Folium
 mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
 
-# Añadir capa de interpolación
+# Añadir la capa de precipitación interpolada como una HeatMap
+heat_data = []
 for i in range(len(grid_lat)):
     for j in range(len(grid_lon)):
         value = interpolated_precipitation[i, j]
-        if not np.isnan(value):  # Evitar agregar puntos nulos
-            folium.CircleMarker(
-                location=[grid_lat[i, j], grid_lon[i, j]],
-                radius=2,
-                color='blue',
-                fill=True,
-                fill_color='blue',
-                fill_opacity=0.5,
-                tooltip=f"Precipitación: {value:.2f} mm"
-            ).add_to(mapa)
+        if not np.isnan(value):  # Evitar valores nulos
+            heat_data.append([grid_lat[i, j], grid_lon[i, j], value])
 
-# Capa GeoJSON para los límites de Colima
+# Añadir capa GeoJSON
 folium.GeoJson(
     geojson_path,
     name="Límites de Colima",
-    style_function=lambda x: {'color': 'black', 'weight': 1, 'fillOpacity': 0}
+    style_function=lambda x: {'color': 'black', 'weight': 1, 'fillOpacity': 0.2}
 ).add_to(mapa)
 
-# Mostrar mapa en Streamlit
-st.title("Mapa de Precipitación Interpolada en Colima")
+# Crear una capa Choropleth
+folium.Choropleth(
+    geo_data=gdf,
+    data=precipitation_avg,
+    columns=["LAT", "Precipitación Promedio"],
+    key_on=None,  # Vincular con datos interpolados
+    fill_color="YlGnBu",
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name="Precipitación Promedio (mm)"
+).add_to(mapa)
+
+# Mostrar el mapa
+st.title("Mapa de Precipitación Promedio Interpolada en Colima")
 st_folium(mapa, width=800, height=600)
