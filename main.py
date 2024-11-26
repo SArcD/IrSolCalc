@@ -1705,7 +1705,6 @@ folium.Choropleth(
 st.title("Mapa de Radiación Solar Promedio en Colima con Ajuste por Nubosidad")
 st_folium(mapa, width=800, height=600)
 
-
 import os
 import pandas as pd
 import geopandas as gpd
@@ -1728,6 +1727,8 @@ def load_precipitation_data(files):
             df = pd.read_csv(file)
             # Filtrar datos donde EDO == 'COL'
             col_data = df[df['EDO'] == 'COL']
+            # Eliminar la columna ESTACION
+            col_data = col_data.drop(columns=['ESTACION'], errors='ignore')
             # Agregar la columna del mes al DataFrame
             col_data['Mes'] = os.path.basename(file).split('010000Lluv')[0][-6:-4]  # Extraer el mes del nombre del archivo
             colima_data.append(col_data)
@@ -1739,9 +1740,9 @@ def load_precipitation_data(files):
 # Cargar datos de precipitaciones de Colima
 precipitation_data = load_precipitation_data(precipitation_files)
 
-# Calcular la precipitación promedio por estación
-precipitation_avg = precipitation_data.groupby('ESTACION')['oct-24'].mean().reset_index()
-precipitation_avg.columns = ['ESTACION', 'Precipitación Promedio']
+# Calcular la precipitación promedio por ubicación
+precipitation_avg = precipitation_data.groupby(['LAT', 'LON'])['oct-24'].mean().reset_index()
+precipitation_avg.columns = ['LAT', 'LON', 'Precipitación Promedio']
 
 # Cargar el archivo GeoJSON
 try:
@@ -1755,7 +1756,7 @@ except Exception as e:
 mapa = folium.Map(location=[19.2453, -103.725], zoom_start=8)
 
 # Añadir capa de precipitaciones
-for _, row in precipitation_data.iterrows():
+for _, row in precipitation_avg.iterrows():
     folium.CircleMarker(
         location=[row['LAT'], row['LON']],
         radius=5,
@@ -1763,7 +1764,7 @@ for _, row in precipitation_data.iterrows():
         fill=True,
         fill_color='blue',
         fill_opacity=0.6,
-        tooltip=f"Estación: {row['ESTACION']}<br>Precipitación: {row['oct-24']} mm"
+        tooltip=f"Precipitación Promedio: {row['Precipitación Promedio']} mm"
     ).add_to(mapa)
 
 # Capa GeoJSON
@@ -1771,7 +1772,7 @@ folium.Choropleth(
     geo_data=gdf,
     name="Precipitación Promedio",
     data=precipitation_avg,
-    columns=["ESTACION", "Precipitación Promedio"],
+    columns=["LAT", "Precipitación Promedio"],
     key_on="feature.properties.NOM_MUN",
     fill_color="YlGnBu",
     fill_opacity=0.7,
@@ -1782,4 +1783,3 @@ folium.Choropleth(
 # Mostrar mapa en Streamlit
 st.title("Mapa de Precipitación Promedio en Colima")
 st_folium(mapa, width=800, height=600)
-
