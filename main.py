@@ -1749,7 +1749,7 @@ fig.add_trace(
         z=elevation_masked,  # Datos de elevación
         x=np.linspace(lon_min, lon_max, elevation_masked.shape[1]),  # Longitudes
         y=np.linspace(lat_max, lat_min, elevation_masked.shape[0]),  # Latitudes (invertido)
-        colorscale="terrain",  # Esquema de colores
+        colorscale="earth",  # Esquema de colores similar a terreno
         colorbar=dict(title="Elevación (m)", titleside="right"),
         zmin=np.min(elevation_masked),  # Valores mínimos para la escala
         zmax=np.max(elevation_masked),  # Valores máximos para la escala
